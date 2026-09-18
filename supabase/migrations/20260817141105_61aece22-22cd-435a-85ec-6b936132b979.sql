@@ -1,0 +1,1 @@
+SELECT * FROM public.fn_etl_med_apresentacao('med_apresentacao_v1');

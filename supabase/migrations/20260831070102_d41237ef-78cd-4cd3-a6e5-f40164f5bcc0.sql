@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.tg_base_sindromes_touch() FROM PUBLIC, anon, authenticated;

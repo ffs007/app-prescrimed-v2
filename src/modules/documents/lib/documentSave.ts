@@ -1,0 +1,77 @@
+// Etapa 20 — Persistência e log de documentos.
+import { supabase } from "@/integrations/supabase/client";
+import type { DocumentoAcaoLog, DocumentoTipo, RenderedDocument } from "./types";
+import { hashDocument, shortValidationCode } from "./pdfPrint";
+import { recordCriticalEvent } from "@/modules/security/lib/auditClient";
+import { AUDIT_ACTIONS } from "@/modules/security/lib/auditActions";
+
+export async function saveGeneratedDocument(args: {
+  rendered: RenderedDocument;
+  id_atendimento?: string | null;
+  id_paciente?: string | null;
+  origem?: "atendimento_atual" | "manual";
+}): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const hash = await hashDocument({ html: args.rendered.html, json: args.rendered.conteudo_json });
+  const { data, error } = await supabase.from("documentos_gerados").insert({
+    tipo: args.rendered.tipo,
+    titulo: args.rendered.titulo,
+    conteudo_resumido: args.rendered.conteudo_resumido,
+    conteudo_json: args.rendered.conteudo_json as never,
+    status: "gerado",
+    gerado_por: user.id,
+    origem: args.origem ?? "atendimento_atual",
+    id_atendimento: args.id_atendimento ?? null,
+    id_paciente: args.id_paciente ?? null,
+    codigo_validacao: shortValidationCode(),
+    hash_documento: hash,
+  }).select("id").single();
+  if (error) { console.error(error); return null; }
+  await recordCriticalEvent({
+    acao: AUDIT_ACTIONS.DOCUMENTO_EMITIDO,
+    modulo: "documentos",
+    entidade: args.rendered.tipo,
+    entidadeId: data?.id ?? null,
+    detalhes: { hash, origem: args.origem ?? "atendimento_atual" },
+  });
+  return data?.id ?? null;
+}
+
+export async function logDocumentAction(args: {
+  id_documento?: string | null;
+  tipo_documento?: DocumentoTipo | null;
+  acao: DocumentoAcaoLog;
+  id_atendimento?: string | null;
+  id_paciente?: string | null;
+  destino_envio?: string | null;
+  motivo_cancelamento?: string | null;
+}): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("log_documentos_clinicos").insert({
+    id_documento: args.id_documento ?? null,
+    tipo_documento: args.tipo_documento ?? null,
+    acao: args.acao,
+    usuario_responsavel: user.id,
+    id_atendimento: args.id_atendimento ?? null,
+    id_paciente: args.id_paciente ?? null,
+    destino_envio: args.destino_envio ?? null,
+    motivo_cancelamento: args.motivo_cancelamento ?? null,
+  });
+}
+
+export async function cancelDocument(id: string, motivo: string): Promise<void> {
+  await supabase.from("documentos_gerados")
+    .update({ status: "cancelado", motivo_cancelamento: motivo })
+    .eq("id", id);
+  await logDocumentAction({ id_documento: id, acao: "cancelou", motivo_cancelamento: motivo });
+  await recordCriticalEvent({
+    acao: AUDIT_ACTIONS.DOCUMENTO_ALTERADO,
+    modulo: "documentos",
+    entidade: "documentos_gerados",
+    entidadeId: id,
+    severidade: "alerta",
+    detalhes: { operacao: "cancelamento" },
+  });
+}

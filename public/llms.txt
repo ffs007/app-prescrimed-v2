@@ -1,0 +1,19 @@
+# PrescriMed
+
+> Plataforma de prescrição rápida e segura para médicos de urgência, emergência e pronto atendimento. Permite gerar receitas (comum, especial, antimicrobiano), atestados, encaminhamentos e solicitações de exames com poucos cliques, com alertas clínicos e modelos rápidos.
+
+## Páginas
+
+- [Home](/): Apresentação do PrescriMed, recursos e diferenciais para médicos de urgência e emergência.
+- [Login](/login): Acesso de médicos cadastrados.
+- [Cadastro](/cadastro): Criação de conta para novos médicos.
+
+## Foco do produto
+
+- Prescrição rápida em urgência, emergência e pronto atendimento
+- Receita comum, receita de controle especial (2 vias em paisagem) e receita de antimicrobiano
+- Atestado, encaminhamento, relatório e solicitação de exames
+- Alertas clínicos básicos (gestação, lactação, alergia, interação, contraindicação)
+- Base medicamentosa expansível por blocos clínicos
+- Modelos rápidos e favoritos por médico
+- Mobile-first, com poucos cliques entre abrir o app e imprimir o documento

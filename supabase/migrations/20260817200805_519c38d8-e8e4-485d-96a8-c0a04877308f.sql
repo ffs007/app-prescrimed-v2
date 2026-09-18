@@ -1,0 +1,58 @@
+DELETE FROM public.stg_patologia_exames
+WHERE lote_id = 'diabetes_endocrino_cronico_v1'
+  AND linha_origem = 'RetinopatiaDiabetica:V3'
+  AND nome_patologia = 'Retinopatia diabética (rastreio e seguimento)'
+  AND nome_exame = 'Tomografia de coerência óptica (OCT)';
+
+INSERT INTO public.stg_patologia_exames
+(lote_id, linha_origem, nome_patologia, subtipo, nome_exame, finalidade,
+obrigatoriedade, contextos, momento_solicitacao, idade_min_anos,
+idade_max_anos, sexo_alvo, aplica_gestante, justificativa_padrao,
+interpretacao_esperada, criterio_positividade, conduta_se_alterado,
+nivel_evidencia, forca_recomendacao, repetir_em_horas, nao_solicitar_se,
+fonte_id, trecho_citado, conflito)
+VALUES
+('diabetes_endocrino_cronico_v1','DM1:V7',
+ 'Diabetes mellitus tipo 1 em seguimento crônico','cronico',
+ 'Peptídeo C','diagnostico','condicional','ambulatorial','primeira_consulta',
+ '0','NAO_NA_FONTE','ambos','COM_RESSALVA',
+ 'Avaliar reserva pancreática residual e diferenciar DM1 de DM2 em caso de dúvida diagnóstica.',
+ 'Peptídeo C baixo ou indetectável = reserva pancreática esgotada.',
+ 'Peptídeo C <0.6 ng/mL.',
+ 'Confirmar DM1; considerar transplante de ilhotas em casos selecionados.',
+ 'B','condicional_favor','NAO_NA_FONTE',
+ 'Não solicitar Peptídeo C em paciente com DM1 já confirmado e em uso de insulina há >5 anos.',
+ 'F001','Peptídeo C baixo confirma DM1. Não solicitar de rotina.','false'),
+('diabetes_endocrino_cronico_v1','DM1:V8',
+ 'Diabetes mellitus tipo 1 em seguimento crônico','cronico',
+ 'Anticorpos antipâncreas (anti-GAD, anti-IA2, anti-ZnT8)','diagnostico','condicional','ambulatorial','primeira_consulta',
+ '0','NAO_NA_FONTE','ambos','COM_RESSALVA',
+ 'Confirmar etiologia autoimune do DM1 ou diagnosticar LADA em adulto com fenótipo atípico.',
+ 'Anti-GAD positivo = etiologia autoimune confirmada.',
+ 'Anti-GAD >=20 U/mL.',
+ 'Confirmar DM1/LADA; considerar rastreamento de outras doenças autoimunes associadas.',
+ 'B','condicional_favor','NAO_NA_FONTE',
+ 'Não solicitar anticorpos antipâncreas em paciente com DM1 já confirmado e em uso de insulina há >5 anos.',
+ 'F001','Anti-GAD positivo confirma etiologia autoimune. Não solicitar de rotina.','false'),
+('diabetes_endocrino_cronico_v1','DM2:V17',
+ 'Diabetes mellitus tipo 2 em seguimento crônico','cronico',
+ 'Monitorização contínua de glicose (CGM)','monitoramento','condicional','ambulatorial','seguimento',
+ '0','NAO_NA_FONTE','ambos','COM_RESSALVA',
+ 'Monitorização contínua em DM2 com insulina intensiva ou hipoglicemias recorrentes não reconhecidas.',
+ 'Tempo no alvo (70-180 mg/dL) >=70% = controle adequado.',
+ 'Tempo no alvo <70% ou tempo abaixo de 70 mg/dL >4%.',
+ 'Ajustar esquema de insulina; revisar hipoglicemias.',
+ 'A','condicional_favor','NAO_NA_FONTE',
+ 'Não solicitar CGM de rotina em DM2 controlado com metformina isolada e HbA1c <7%.',
+ 'F001','CGM é indicado em DM2 com insulina intensiva ou hipoglicemias recorrentes.','false'),
+('diabetes_endocrino_cronico_v1','DM2:V18',
+ 'Diabetes mellitus tipo 2 em seguimento crônico','cronico',
+ 'Ultrassonografia de abdome total','rastreio','condicional','ambulatorial','seguimento',
+ '0','NAO_NA_FONTE','ambos','COM_RESSALVA',
+ 'Rastrear esteatose hepática não alcoólica (DHGNA) em DM2 com fatores de risco metabólico.',
+ 'Ausência de esteatose = normal.',
+ 'Esteatose hepática presente.',
+ 'Orientar mudanças de estilo de vida; considerar elastografia hepática.',
+ 'B','condicional_favor','8760',
+ 'Não solicitar USG de abdome de rotina em DM2 sem fatores de risco metabólico ou sem alteração de função hepática.',
+ 'F001','USG de abdome condicional em DM2 com fatores de risco metabólico.','false');

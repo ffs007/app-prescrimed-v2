@@ -1,0 +1,13 @@
+project_id = "zwwalaioamxcvxbihxlr"
+
+[functions.public-document-link]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.payments-webhook]
+verify_jwt = false
+
+[functions.create-portal-session]
+verify_jwt = false
