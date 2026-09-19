@@ -6,7 +6,7 @@ type Props = {
   path: string;
 };
 
-const SITE_URL = "https://flavour-magic-hub.lovable.app";
+const SITE_URL = "https://app-prescrimed-v2.vercel.app";
 
 export default function PageMeta({ title, description, path }: Props) {
   const url = `${SITE_URL}${path}`;

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://flavour-magic-hub.lovable.app/</loc>
+    <loc>https://app-prescrimed-v2.vercel.app/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://flavour-magic-hub.lovable.app/login</loc>
+    <loc>https://app-prescrimed-v2.vercel.app/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://flavour-magic-hub.lovable.app/cadastro</loc>
+    <loc>https://app-prescrimed-v2.vercel.app/cadastro</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
