@@ -195,17 +195,55 @@ export interface ReadyCondition {
 
 export async function getReadyConditions(): Promise<ReadyCondition[]> {
   const { data, error } = await supabase.rpc("fn_quadros_prontos_fluxo_rapido" as any);
-  if (error) throw error;
-  return (((data as any) ?? []) as Row[]).map((r) => ({
-    conditionType: r.condicao_tipo,
-    conditionName: r.condicao_nome,
-    options: Number(r.opcoes ?? 0),
-  }));
+  if (!error) {
+    return (((data as any) ?? []) as Row[]).map((r) => ({
+      conditionType: r.condicao_tipo,
+      conditionName: r.condicao_nome,
+      options: Number(r.opcoes ?? 0),
+    }));
+  }
+  if (error.code !== "PGRST202") throw error;
+
+  const [links, released] = await Promise.all([
+    supabase
+      .from("clinical_condition_medication")
+      .select("condicao_tipo, condicao_nome, condicao_normalizada, medicamento_id")
+      .eq("review_status", "reviewed")
+      .limit(5000),
+    supabase
+      .from("vw_medicamento_completo")
+      .select("id")
+      .eq("ativo", true)
+      .eq("status_revisao", "revisado")
+      .eq("dose_incompleta", false)
+      .eq("apresentacao_incompleta", false)
+      .limit(5000),
+  ]);
+  if (links.error) throw links.error;
+  if (released.error) throw released.error;
+
+  const releasedIds = new Set((released.data ?? []).map((item) => item.id).filter(Boolean));
+  const grouped = new Map<string, ReadyCondition>();
+  for (const item of links.data ?? []) {
+    if (!releasedIds.has(item.medicamento_id)) continue;
+    const key = `${item.condicao_tipo}|${item.condicao_normalizada}`;
+    const current = grouped.get(key);
+    if (current) current.options += 1;
+    else {
+      grouped.set(key, {
+        conditionType: item.condicao_tipo,
+        conditionName: item.condicao_nome,
+        options: 1,
+      });
+    }
+  }
+  return [...grouped.values()].sort((a, b) => b.options - a.options);
 }
 
 export interface UpsertLinkInput {
   id?: string | null;
   conditionType: "patologia" | "sindrome";
+  conditionId?: string | null;
   conditionName: string;
   medicationId: string;
   role: LinkRole;
@@ -228,6 +266,8 @@ export async function upsertLink(input: UpsertLinkInput): Promise<string> {
     p_populacao: input.population ?? null,
     p_notes: input.notes ?? null,
     p_source: input.source ?? null,
+    p_apresentacao_id: null,
+    p_condicao_id: input.conditionId ?? null,
   });
   if (error) throw error;
   return String(data);
@@ -236,10 +276,25 @@ export async function upsertLink(input: UpsertLinkInput): Promise<string> {
 export type LinkAction = "aprovar" | "corrigir" | "pendente" | "inativar" | "remover";
 
 export async function applyLinkAction(id: string, action: LinkAction, note?: string | null): Promise<void> {
-  const { error } = await supabase.rpc("fn_vinculo_acao" as any, {
-    p_id: id,
-    p_acao: action,
-    p_observacao: note ?? null,
-  });
+  if (action === "remover") {
+    const { error } = await supabase.from("clinical_condition_medication").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+
+  const status: Record<Exclude<LinkAction, "remover">, LinkStatus> = {
+    aprovar: "reviewed",
+    corrigir: "needs_correction",
+    pendente: "pending_review",
+    inativar: "inactive",
+  };
+  const patch: Row = { review_status: status[action] };
+  if (note) patch.notes = note;
+  if (action === "aprovar") {
+    const { data: auth } = await supabase.auth.getUser();
+    patch.revisado_por = auth.user?.id ?? null;
+    patch.revisado_em = new Date().toISOString();
+  }
+  const { error } = await supabase.from("clinical_condition_medication").update(patch).eq("id", id);
   if (error) throw error;
 }

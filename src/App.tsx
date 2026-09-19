@@ -43,7 +43,6 @@ import ResultadoEscorePage from "./pages/ResultadoEscorePage";
 import PromocaoBasePage from "./pages/PromocaoBasePage";
 import AuditoriaBaseClinicaPage from "./pages/AuditoriaBaseClinicaPage";
 import RevisaoClinicaPage from "./pages/RevisaoClinicaPage";
-import VinculosClinicosPage from "./pages/VinculosClinicosPage";
 import MinhasPatologiasPage from "./pages/MinhasPatologiasPage";
 import ProtocolosEscoresPage from "./pages/ProtocolosEscoresPage";
 import AtualizacoesPage from "./pages/AtualizacoesPage";
@@ -118,7 +117,7 @@ const App = () => (
           <Route path="/admin/promocao-base" element={<ProtectedRoute><AdminRoute><PromocaoBasePage /></AdminRoute></ProtectedRoute>} />
           <Route path="/admin/auditoria-base" element={<ProtectedRoute><AdminRoute><AuditoriaBaseClinicaPage /></AdminRoute></ProtectedRoute>} />
           <Route path="/admin/revisao-clinica" element={<ProtectedRoute><AdminRoute><RevisaoClinicaPage /></AdminRoute></ProtectedRoute>} />
-          <Route path="/admin/vinculos-clinicos" element={<ProtectedRoute><AdminRoute><VinculosClinicosPage /></AdminRoute></ProtectedRoute>} />
+          <Route path="/admin/vinculos-clinicos" element={<ProtectedRoute><AdminRoute><VinculoMedicamentosPage /></AdminRoute></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
