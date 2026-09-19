@@ -23,11 +23,16 @@ export default function AssinaturaPage() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    if (loading) return;
+    if (isActive) {
+      setCheckoutPlan(null);
+      return;
+    }
     const requestedPlan = searchParams.get("plan");
     if (!isPlanId(requestedPlan)) return;
     setCheckoutPlan(requestedPlan);
     void logUsageEvent({ tipo: "checkout_inicio", recurso: requestedPlan });
-  }, [searchParams]);
+  }, [isActive, loading, searchParams]);
 
   const selecionarPlano = (plan: PlanId) => {
     setCheckoutPlan(plan);
@@ -147,7 +152,7 @@ export default function AssinaturaPage() {
         </>
       )}
 
-      {checkoutPlan && (
+      {!loading && !isActive && checkoutPlan && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Pagamento</CardTitle>
