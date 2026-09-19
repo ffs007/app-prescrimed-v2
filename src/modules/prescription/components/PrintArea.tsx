@@ -393,12 +393,12 @@ const PrintArea = ({
         "bg-card rounded-2xl w-full max-h-[90vh] overflow-y-auto p-10 relative print:shadow-none print:rounded-none print:max-w-none print:max-h-none print:p-[10mm] print:bg-white prescription-print-area",
         useLandscape ? "max-w-5xl" : "max-w-2xl"
       )}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground print:hidden">
+        <button data-html2canvas-ignore onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground print:hidden">
           <X className="h-5 w-5" />
         </button>
 
         {overflowWarning && (
-          <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3 print:hidden">
+          <div data-html2canvas-ignore className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3 print:hidden">
             <p className="text-xs font-semibold text-destructive">
               Conteúdo excede uma folha A4 paisagem
             </p>
@@ -723,7 +723,7 @@ const PrintArea = ({
 
 
         {action === "receita" && ivMeds.length > 0 && (
-          <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-md border bg-muted/30 print:hidden">
+          <div data-html2canvas-ignore className="mt-6 flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-md border bg-muted/30 print:hidden">
             <p className="text-xs text-foreground flex-1">
               <strong>{ivMeds.length}</strong> medicamento(s) IV identificado(s). Deseja incluir orientações de diluição/administração no PDF?
             </p>
@@ -738,7 +738,7 @@ const PrintArea = ({
           </div>
         )}
 
-        <div className="mt-8 flex flex-col gap-2 print:hidden sm:flex-row sm:gap-3">
+        <div data-html2canvas-ignore className="mt-8 flex flex-col gap-2 print:hidden sm:flex-row sm:gap-3">
           <Button
             variant="default"
             className="flex-1 bg-canon-blue text-primary-foreground hover:bg-canon-blue/90"
@@ -762,7 +762,7 @@ const PrintArea = ({
           <Button variant="ghost" onClick={onClose} disabled={savingPdf}>Fechar</Button>
         </div>
         {hasSpecialPrescription && (
-          <p className="mt-2 text-[10px] text-ink-faint italic text-center print:hidden">
+          <p data-html2canvas-ignore className="mt-2 text-[10px] text-ink-faint italic text-center print:hidden">
             ⓘ Receita de controle especial será impressa em paisagem (A4 transversal), 2 vias lado a lado.
           </p>
         )}
