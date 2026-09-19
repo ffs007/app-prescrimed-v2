@@ -33,7 +33,7 @@ const Cadastro = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -46,6 +46,10 @@ const Cadastro = () => {
       toast.error(error.message.includes("already registered")
         ? "Este e-mail já está cadastrado."
         : error.message);
+      return;
+    }
+    if (!data.session) {
+      toast.success("Conta criada. Enviamos um link de confirmação para o seu e-mail; abra-o para continuar.");
       return;
     }
     toast.success("Conta criada com sucesso!");
