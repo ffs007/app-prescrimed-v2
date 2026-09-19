@@ -91,7 +91,7 @@ const LoginSection = () => {
           </button>
 
           <div className="flex items-center justify-between text-xs text-ink-muted pt-1">
-            <Link to="/login" className="hover:text-ink transition-colors">
+            <Link to="/recuperar-senha" className="hover:text-ink transition-colors">
               Esqueci minha senha
             </Link>
             <Link to="/cadastro" className="hover:text-ink transition-colors">

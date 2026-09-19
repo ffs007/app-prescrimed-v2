@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
+import RecuperarSenha from "./pages/RecuperarSenha.tsx";
+import RedefinirSenha from "./pages/RedefinirSenha.tsx";
 import Home from "./pages/Home.tsx";
 import Patients from "./pages/Patients.tsx";
 import QuickTemplates from "./pages/QuickTemplates.tsx";
@@ -75,6 +77,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
           <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
             <Route index element={<Home />} />

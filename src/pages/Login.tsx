@@ -65,7 +65,12 @@ const Login = () => {
             <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="password">Senha</Label>
+              <Link to="/recuperar-senha" className="text-xs font-medium text-primary hover:underline">
+                Esqueci minha senha
+              </Link>
+            </div>
             <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
           <Button variant="hero" className="w-full" type="submit" disabled={loading}>
