@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import PageMeta from "@/components/seo/PageMeta";
@@ -12,12 +12,17 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedLocation = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+  const destination = requestedLocation?.pathname?.startsWith("/app")
+    ? `${requestedLocation.pathname}${requestedLocation.search ?? ""}`
+    : "/app";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/app", { replace: true });
+      if (session) navigate(destination, { replace: true });
     });
-  }, [navigate]);
+  }, [destination, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +36,7 @@ const Login = () => {
       return;
     }
     toast.success("Login realizado com sucesso!");
-    navigate("/app", { replace: true });
+    navigate(destination, { replace: true });
   };
 
   return (

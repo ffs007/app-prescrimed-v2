@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Check, ExternalLink, Loader2 } from "lucide-react";
 import PageMeta from "@/components/seo/PageMeta";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useSubscription } from "@/hooks/useSubscription";
 import { getStripeEnvironment, isPaymentsConfigured } from "@/lib/stripe";
-import { PLANS, PLAN_LABEL, PREMIUM_FEATURES, type PlanId } from "@/modules/billing/lib/plans";
+import { isPlanId, PLANS, PLAN_LABEL, PREMIUM_FEATURES, type PlanId } from "@/modules/billing/lib/plans";
 import StripeEmbeddedCheckout from "@/components/payments/StripeEmbeddedCheckout";
 import PaymentTestModeBanner from "@/components/payments/PaymentTestModeBanner";
 
@@ -18,6 +19,12 @@ export default function AssinaturaPage() {
   const { subscription, isActive, isPastDue, loading } = useSubscription();
   const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const requestedPlan = searchParams.get("plan");
+    if (isPlanId(requestedPlan)) setCheckoutPlan(requestedPlan);
+  }, [searchParams]);
 
   const abrirPortal = async () => {
     setPortalLoading(true);

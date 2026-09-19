@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import PageMeta from "@/components/seo/PageMeta";
+import { isPlanId } from "@/modules/billing/lib/plans";
 
 const Cadastro = () => {
   const [name, setName] = useState("");
@@ -13,12 +14,17 @@ const Cadastro = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedPlan = searchParams.get("plan");
+  const destination = isPlanId(requestedPlan)
+    ? `/app/assinatura?plan=${requestedPlan}`
+    : "/app";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/app", { replace: true });
+      if (session) navigate(destination, { replace: true });
     });
-  }, [navigate]);
+  }, [destination, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +37,7 @@ const Cadastro = () => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: `${window.location.origin}${destination}`,
         data: { full_name: name },
       },
     });
@@ -43,7 +49,7 @@ const Cadastro = () => {
       return;
     }
     toast.success("Conta criada com sucesso!");
-    navigate("/app", { replace: true });
+    navigate(destination, { replace: true });
   };
 
   return (

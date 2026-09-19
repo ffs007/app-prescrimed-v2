@@ -63,7 +63,7 @@ const PricingSection = () => {
               </ul>
 
               <Link
-                to="/cadastro"
+                to={`/cadastro?plan=${plan.id}`}
                 className={`mt-10 block text-center px-6 py-3.5 text-[11px] font-semibold tracking-editorial uppercase transition-colors ${
                   index === 1
                     ? "bg-ink text-paper hover:bg-ink-muted"

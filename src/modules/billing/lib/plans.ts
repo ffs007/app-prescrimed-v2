@@ -1,5 +1,9 @@
 export type PlanId = "pro_monthly" | "pro_yearly";
 
+export function isPlanId(value: string | null): value is PlanId {
+  return value === "pro_monthly" || value === "pro_yearly";
+}
+
 export interface PlanDefinition {
   id: PlanId;
   nome: string;
