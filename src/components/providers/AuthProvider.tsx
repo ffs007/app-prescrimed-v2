@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import { clearLocalAppData, ensureLocalDataOwner } from "@/lib/sessionCleanup";
 
 type AuthContextValue = {
   session: Session | null;
@@ -19,22 +21,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // 1) Listener primeiro (evita perder eventos), sem chamadas assíncronas dentro do callback
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "SIGNED_OUT") {
+        queryClient.clear();
+        clearLocalAppData();
+      } else if (s?.user?.id && ensureLocalDataOwner(s.user.id)) {
+        queryClient.clear();
+      }
       setSession(s);
       setLoading(false);
     });
 
     // 2) Sessão existente
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (s?.user?.id && ensureLocalDataOwner(s.user.id)) queryClient.clear();
       setSession(s);
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const userId = session?.user?.id ?? null;
 
@@ -66,10 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     rolesLoading,
     isAdmin: roles.includes("admin"),
     signOut: async () => {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      } finally {
+        queryClient.clear();
+        clearLocalAppData();
+      }
     },
-  }), [session, loading, roles, rolesLoading]);
+  }), [session, loading, roles, rolesLoading, queryClient]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
