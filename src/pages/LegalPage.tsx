@@ -25,6 +25,7 @@ const CONFIG = {
 
 export default function LegalPage({ kind }: Props) {
   const page = CONFIG[kind];
+  const lines = page.content.replace(/^### .+\n+/, "").split("\n").filter(Boolean);
 
   return (
     <main className="min-h-screen bg-paper text-ink">
@@ -43,8 +44,18 @@ export default function LegalPage({ kind }: Props) {
           Versão {LEGAL_VERSION}
         </p>
         <h1 className="font-serif text-4xl tracking-tight md:text-5xl">{page.title}</h1>
-        <div className="mt-10 whitespace-pre-line text-base leading-8 text-ink-muted">
-          {page.content.replace(/^### .+\n+/, "")}
+        <div className="mt-10 space-y-5 text-base leading-8 text-ink-muted">
+          {lines.map((line) => (
+            <p key={line}>
+              {line.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
+                part.startsWith("**") ? (
+                  <strong key={`${index}-${part}`} className="font-semibold text-ink">
+                    {part.slice(2, -2)}
+                  </strong>
+                ) : part,
+              )}
+            </p>
+          ))}
         </div>
       </article>
     </main>
