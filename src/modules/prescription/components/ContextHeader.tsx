@@ -1,5 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Stethoscope, Settings, LogOut, User, Building2, Ambulance, History } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { toast } from "sonner";
 
 export type CareContext = "hospitalar" | "urgencia";
 
@@ -26,6 +28,8 @@ const ContextHeader = ({
   onOpenHistory,
   historyCount = 0,
 }: ContextHeaderProps) => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const subtitle =
     context === "hospitalar"
       ? "Enfermaria · internação"
@@ -86,13 +90,16 @@ const ContextHeader = ({
           >
             <Settings className="h-4 w-4" />
           </button>
-          <Link
-            to="/"
+          <button
+            onClick={() => void signOut()
+              .then(() => navigate("/login", { replace: true }))
+              .catch(() => toast.error("Não foi possível encerrar a sessão."))}
             className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-ink-soft bg-card text-ink-muted transition hover:bg-paper-alt"
             aria-label="Sair"
+            title="Encerrar sessão"
           >
             <LogOut className="h-4 w-4" />
-          </Link>
+          </button>
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-canon-blue/10 text-canon-blue">
             <User className="h-4 w-4" />
           </div>
