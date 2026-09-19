@@ -52,6 +52,7 @@ import AssinaturaPage from "./pages/AssinaturaPage";
 import AssinaturaRetornoPage from "./pages/AssinaturaRetornoPage";
 import RequireSubscription from "./modules/billing/components/RequireSubscription";
 import { AuthProvider } from "./components/providers/AuthProvider";
+import LegalPage from "./pages/LegalPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,6 +80,8 @@ const App = () => (
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/recuperar-senha" element={<RecuperarSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          <Route path="/termos" element={<LegalPage kind="terms" />} />
+          <Route path="/privacidade" element={<LegalPage kind="privacy" />} />
 
           <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
             <Route index element={<Home />} />

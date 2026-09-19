@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://app-prescrimed-v2.vercel.app/sitemap.xml
+Sitemap: https://prescrimed.app/sitemap.xml
