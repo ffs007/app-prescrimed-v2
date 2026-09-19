@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PrescriMed">
+  <rect width="512" height="512" rx="112" fill="#0f6675"/>
+  <path fill="#fff" d="M143 112h126c79 0 128 43 128 112 0 70-49 114-128 114h-45v62h-81V112Zm81 70v86h42c32 0 50-15 50-44 0-28-18-42-50-42h-42Z"/>
+  <path fill="#63d7bd" d="m309 309 29-29 31 31 31-31 29 29-31 31 31 31-29 29-31-31-31 31-29-29 31-31-31-31Z"/>
+</svg>
