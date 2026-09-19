@@ -1,3 +1,4 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { type StripeEnv, createStripeClient } from "../_shared/stripe.ts";
 
@@ -128,13 +129,24 @@ Deno.serve(async (req) => {
     });
   }
   try {
+    const authorization = req.headers.get("Authorization");
+    if (!authorization) throw new Error("Unauthorized");
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authorization } }, auth: { persistSession: false } },
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error("Unauthorized");
+
     const body = await req.json();
     const environment = body.environment === "live" ? "live" : "sandbox";
     const clientSecret = await createCheckoutSession({
       priceId: String(body.priceId ?? ""),
       quantity: body.quantity,
-      customerEmail: body.customerEmail,
-      userId: body.userId,
+      customerEmail: user.email,
+      userId: user.id,
       returnUrl: String(body.returnUrl ?? ""),
       environment,
     });

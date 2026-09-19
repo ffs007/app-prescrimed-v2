@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import logo from "@/assets/logo.png";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,7 +43,7 @@ const Login = () => {
       />
       <div className="w-full max-w-md bg-card rounded-2xl p-8 shadow-lg border border-border">
         <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-          <img src={logo} alt="PrescriMed" className="w-10 h-10" width={40} height={40} />
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">PM+</span>
           <span className="font-bold text-xl text-foreground">
             Prescri<span className="text-primary">Med+</span>
           </span>

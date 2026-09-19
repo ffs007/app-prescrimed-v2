@@ -24,10 +24,10 @@ const Footer = () => {
               to="/cadastro"
               className="bg-paper text-ink px-7 py-4 text-xs font-semibold tracking-editorial uppercase hover:bg-paper/90 transition-colors text-center"
             >
-              Teste grátis por 7 dias
+              Criar conta grátis
             </Link>
             <p className="text-xs text-paper/50 text-center">
-              Sem cartão de crédito. Sem renovação automática.
+              Recursos básicos gratuitos. Plano Pro opcional.
             </p>
           </div>
         </div>

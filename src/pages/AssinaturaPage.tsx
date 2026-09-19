@@ -142,8 +142,6 @@ export default function AssinaturaPage() {
             <StripeEmbeddedCheckout
               priceId={checkoutPlan}
               quantity={1}
-              customerEmail={user?.email ?? undefined}
-              userId={user?.id ?? undefined}
               returnUrl={`${window.location.origin}/app/assinatura/retorno?session_id={CHECKOUT_SESSION_ID}`}
             />
           </CardContent>

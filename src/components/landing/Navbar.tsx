@@ -32,7 +32,7 @@ const Navbar = () => {
             to="/cadastro"
             className="bg-ink text-paper px-5 py-2.5 text-[11px] font-semibold tracking-editorial uppercase hover:bg-ink-muted transition-colors"
           >
-            Teste grátis
+            Criar conta
           </Link>
         </div>
 
@@ -71,7 +71,7 @@ const Navbar = () => {
               onClick={() => setOpen(false)}
               className="block text-center bg-ink text-paper px-5 py-3 text-[11px] font-semibold tracking-editorial uppercase"
             >
-              Teste grátis
+              Criar conta
             </Link>
           </div>
         </div>
