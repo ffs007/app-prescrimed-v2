@@ -5,7 +5,6 @@ import ModulesSection from "@/components/landing/ModulesSection";
 import PainPointsSection from "@/components/landing/PainPointsSection";
 import StepsSection from "@/components/landing/StepsSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
-import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import PricingSection from "@/components/landing/PricingSection";
 import FAQSection from "@/components/landing/FAQSection";
 import LoginSection from "@/components/landing/LoginSection";
@@ -16,8 +15,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageMeta
-        title="PrescriMed — Prescrição rápida para urgência e emergência"
-        description="Receitas, atestados e exames em segundos. Doses calculadas, alertas clínicos e modelos prontos para médicos de pronto atendimento."
+        title="PrescriMed — Documentos clínicos para o plantão"
+        description="Organize prescrições, exames e documentos clínicos em um fluxo rápido, editável e sujeito à revisão médica antes da emissão."
         path="/"
       />
       <Navbar />
@@ -27,7 +26,6 @@ const Index = () => {
         <ModulesSection />
         <StepsSection />
         <FeaturesSection />
-        <TestimonialsSection />
         <TrustSection />
         <PricingSection />
         <FAQSection />

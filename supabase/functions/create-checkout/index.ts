@@ -1,3 +1,4 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { type StripeEnv, createStripeClient } from "../_shared/stripe.ts";
 
@@ -101,13 +102,16 @@ async function createCheckoutSession(options: {
     }
   }
 
+  const automaticTax = Deno.env.get("STRIPE_AUTOMATIC_TAX") === "true";
+
   const session = await stripe.checkout.sessions.create({
     line_items: [{ price: stripePrice.id, quantity: options.quantity || 1 }],
     mode: isRecurring ? "subscription" : "payment",
     ui_mode: "embedded_page",
     return_url: options.returnUrl,
-    automatic_tax: { enabled: true },
+    ...(automaticTax && { automatic_tax: { enabled: true } }),
     ...(customerId && { customer: customerId }),
+    ...(customerId && automaticTax && { customer_update: { address: "auto" as const } }),
     ...(discounts && { discounts }),
     ...(!isRecurring && { payment_intent_data: { description: productDescription } }),
     ...(options.userId && {
@@ -128,13 +132,24 @@ Deno.serve(async (req) => {
     });
   }
   try {
+    const authorization = req.headers.get("Authorization");
+    if (!authorization) throw new Error("Unauthorized");
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authorization } }, auth: { persistSession: false } },
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error("Unauthorized");
+
     const body = await req.json();
     const environment = body.environment === "live" ? "live" : "sandbox";
     const clientSecret = await createCheckoutSession({
       priceId: String(body.priceId ?? ""),
       quantity: body.quantity,
-      customerEmail: body.customerEmail,
-      userId: body.userId,
+      customerEmail: user.email,
+      userId: user.id,
       returnUrl: String(body.returnUrl ?? ""),
       environment,
     });

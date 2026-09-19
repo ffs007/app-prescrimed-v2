@@ -25,7 +25,7 @@ const modules: ModuleItem[] = [
   {
     icon: Pill,
     name: "Receita médica",
-    desc: "Comum, especial e controle. Cálculo pediátrico e checagem de interações.",
+    desc: "Medicamentos, posologia e orientações em um documento editável e revisável.",
     pill: "Núcleo clínico",
     status: "disponivel",
   },
@@ -152,11 +152,11 @@ const ModulesSection = () => {
                 Próxima fronteira
               </div>
               <h3 className="font-serif text-xl md:text-2xl tracking-tight leading-snug mb-3">
-                Prontuário leve & assinatura ICP-Brasil integrada
+                Prontuário leve & assinatura digital
               </h3>
             </div>
             <p className="text-sm text-paper/70 leading-relaxed mt-6">
-              O atendimento inteiro num único fluxo, com validade jurídica.
+              Integração com provedor ICP-Brasil planejada. Hoje, o fluxo prioriza revisão, PDF e assinatura pelo médico.
             </p>
           </article>
         </div>

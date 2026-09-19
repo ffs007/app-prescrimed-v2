@@ -5,6 +5,8 @@ import BetaChecklistCard from "./BetaChecklistCard";
 import IndicadoresBaseMedCard from "@/modules/medications-base/IndicadoresBaseMedCard";
 import ProntidaoBlocosCard from "@/modules/medications-base/blocos/ProntidaoBlocosCard";
 import EscoresIndicatorsCard from "./EscoresIndicatorsCard";
+import CheckoutFunnelCard from "@/modules/usage/CheckoutFunnelCard";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 const Tile = ({ label, value }: { label: string; value: number | string }) => (
   <Card><CardContent className="p-4">
@@ -15,10 +17,12 @@ const Tile = ({ label, value }: { label: string; value: number | string }) => (
 
 export default function IndicatorsPanel() {
   const { counts, loading } = useIndicators();
+  const { isAdmin } = useAuth();
   if (loading) return <div className="text-sm text-muted-foreground p-4">Carregando indicadores…</div>;
 
   return (
     <div className="space-y-6">
+      {isAdmin && <CheckoutFunnelCard />}
       <div>
         <h2 className="text-lg font-semibold mb-3">Indicadores</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

@@ -124,7 +124,7 @@ const MinhasPatologiasPage = () => {
   const { pathologies: customPathologies } = useCustomPathologies();
   const { create, update, remove } = useCustomPathologyMutations();
   const { pathologies, isLoading: catalogLoading } = usePathologiesCatalog(customPathologies);
-  const { isFavorite, toggleFavorite, recents, useCount } = usePathologyMemory();
+  const { isFavorite, toggleFavorite, recents, useCount: getUseCount } = usePathologyMemory();
   const { map: customizations, isLoading: customizationLoading } = usePathologyCustomizationMap();
   const { remove: removeCustomization } = usePathologyCustomizationMutations();
 
@@ -171,7 +171,7 @@ const MinhasPatologiasPage = () => {
     items = [...items].sort((a, b) => {
       switch (sort) {
         case "frequencia": {
-          const d = useCount(pathologyKey(b.name)) - useCount(pathologyKey(a.name));
+          const d = getUseCount(pathologyKey(b.name)) - getUseCount(pathologyKey(a.name));
           return d !== 0 ? d : byName(a, b);
         }
         case "favoritos": {
@@ -207,7 +207,7 @@ const MinhasPatologiasPage = () => {
     isFavorite,
     recents,
     customizations,
-    useCount,
+    getUseCount,
   ]);
 
   const customRowByName = useMemo(() => {
@@ -413,7 +413,7 @@ const MinhasPatologiasPage = () => {
           {list.map((p) => {
             const custom = p.isCustom ? customRowByName.get(p.name) : undefined;
             const tuning = customizations.get(pathologyKey(p.name));
-            const uses = useCount(pathologyKey(p.name));
+            const uses = getUseCount(pathologyKey(p.name));
             const spec = p.specialty ?? p.category;
             return (
               <Card key={p.id}>

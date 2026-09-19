@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { LogOut, Plus, Search } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import AppSidebar from "./AppSidebar";
@@ -14,13 +14,28 @@ import UnifiedSearchDialog from "@/modules/search/UnifiedSearchDialog";
 import UsageTracker from "@/modules/usage/UsageTracker";
 import { useSubscription } from "@/hooks/useSubscription";
 import InstallAppBanner from "./InstallAppBanner";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { toast } from "sonner";
 
 export default function AppShell() {
   const navigate = useNavigate();
   const { settings } = useBetaSettings();
   const betaAtivo = !!settings?.modo_beta_ativo;
   const [searchOpen, setSearchOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const { isActive: planoAtivo } = useSubscription();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      navigate("/login", { replace: true });
+    } catch {
+      toast.error("Não foi possível encerrar a sessão. Tente novamente.");
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -62,6 +77,16 @@ export default function AppShell() {
               <Button size="sm" onClick={() => navigate("/app/prescricao/nova")}>
                 <Plus className="h-4 w-4 mr-1" /> Nova Prescrição
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => void handleSignOut()}
+                disabled={signingOut}
+                aria-label="Encerrar sessão"
+                title="Encerrar sessão"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </header>
           <main className="flex-1 pb-20 md:pb-4">
@@ -77,4 +102,3 @@ export default function AppShell() {
     </SidebarProvider>
   );
 }
-

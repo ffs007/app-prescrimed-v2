@@ -24,10 +24,10 @@ const Footer = () => {
               to="/cadastro"
               className="bg-paper text-ink px-7 py-4 text-xs font-semibold tracking-editorial uppercase hover:bg-paper/90 transition-colors text-center"
             >
-              Teste grátis por 7 dias
+              Criar conta grátis
             </Link>
             <p className="text-xs text-paper/50 text-center">
-              Sem cartão de crédito. Sem renovação automática.
+              Recursos básicos gratuitos. Plano Pro opcional.
             </p>
           </div>
         </div>
@@ -40,10 +40,10 @@ const Footer = () => {
         </Link>
 
         <div className="flex flex-wrap gap-6 text-[11px] uppercase tracking-editorial text-paper/60">
-          <a href="#" className="hover:text-paper transition-colors">Termos</a>
-          <a href="#" className="hover:text-paper transition-colors">Privacidade</a>
-          <a href="#" className="hover:text-paper transition-colors">LGPD</a>
-          <a href="#" className="hover:text-paper transition-colors">Contato</a>
+          <Link to="/termos" className="hover:text-paper transition-colors">Termos</Link>
+          <Link to="/privacidade" className="hover:text-paper transition-colors">Privacidade</Link>
+          <Link to="/privacidade" className="hover:text-paper transition-colors">LGPD</Link>
+          <a href="https://www.instagram.com/prescrimed.app/" target="_blank" rel="noreferrer" className="hover:text-paper transition-colors">Contato</a>
         </div>
 
         <p className="text-[11px] text-paper/50">

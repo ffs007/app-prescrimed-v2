@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import logo from "@/assets/logo.png";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import PageMeta from "@/components/seo/PageMeta";
+import { isPlanId } from "@/modules/billing/lib/plans";
 
 const Cadastro = () => {
   const [name, setName] = useState("");
@@ -14,12 +14,17 @@ const Cadastro = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedPlan = searchParams.get("plan");
+  const destination = isPlanId(requestedPlan)
+    ? `/app/assinatura?plan=${requestedPlan}`
+    : "/app";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/app", { replace: true });
+      if (session) navigate(destination, { replace: true });
     });
-  }, [navigate]);
+  }, [destination, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +33,11 @@ const Cadastro = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: `${window.location.origin}${destination}`,
         data: { full_name: name },
       },
     });
@@ -43,20 +48,24 @@ const Cadastro = () => {
         : error.message);
       return;
     }
+    if (!data.session) {
+      toast.success("Conta criada. Enviamos um link de confirmação para o seu e-mail; abra-o para continuar.");
+      return;
+    }
     toast.success("Conta criada com sucesso!");
-    navigate("/app", { replace: true });
+    navigate(destination, { replace: true });
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <PageMeta
-        title="Criar conta no PrescriMed — Teste grátis por 1 mês"
-        description="Cadastre-se no PrescriMed e prescreva com rapidez e segurança em pronto atendimento, urgência e emergência. Teste grátis por 1 mês."
+        title="Criar conta grátis no PrescriMed"
+        description="Cadastre-se gratuitamente no PrescriMed e prescreva com rapidez e segurança em pronto atendimento, urgência e emergência."
         path="/cadastro"
       />
       <div className="w-full max-w-md bg-card rounded-2xl p-8 shadow-lg border border-border">
         <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-          <img src={logo} alt="PrescriMed" className="w-10 h-10" width={40} height={40} />
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">PM+</span>
           <span className="font-bold text-xl text-foreground">
             Prescri<span className="text-primary">Med+</span>
           </span>
@@ -64,7 +73,7 @@ const Cadastro = () => {
 
         <h1 className="text-2xl font-bold text-foreground text-center">Criar conta grátis</h1>
         <p className="text-sm text-muted-foreground text-center mt-1">
-          Teste grátis por 7 dias, sem cartão de crédito
+          Comece gratuitamente, sem cartão de crédito
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">

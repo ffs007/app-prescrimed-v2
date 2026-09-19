@@ -24,15 +24,15 @@ const faqs = [
   },
   {
     q: "De onde vêm as doses e diretrizes utilizadas?",
-    a: "A base é construída a partir de fontes oficiais brasileiras (Anvisa, DEF, bulas) e diretrizes de sociedades médicas reconhecidas. Cada referência é versionada e auditável dentro da plataforma.",
+    a: "A base reúne referências clínicas e status de revisão. Sugestões devem ser conferidas pelo médico antes da emissão e não substituem a fonte oficial nem o julgamento clínico.",
   },
   {
     q: "Meus dados e dos meus pacientes ficam seguros?",
-    a: "Sim. Aderência estrita à LGPD, criptografia em trânsito e em repouso, e princípio de minimização de dados. Você é o controlador dos dados clínicos que registrar.",
+    a: "O produto aplica minimização de dados e controles de acesso orientados à LGPD. Registre apenas os dados necessários ao atendimento e proteja suas credenciais.",
   },
   {
     q: "Posso cancelar quando quiser?",
-    a: "Sim. Não há renovação automática nem multa. Ao final do período contratado, basta não renovar — o acesso simplesmente expira.",
+    a: "Sim. Os planos têm renovação automática e podem ser cancelados para impedir a próxima cobrança, conforme as condições apresentadas no checkout.",
   },
 ];
 

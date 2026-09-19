@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import logo from "@/assets/logo.png";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import PageMeta from "@/components/seo/PageMeta";
@@ -13,12 +12,17 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedLocation = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+  const destination = requestedLocation?.pathname?.startsWith("/app")
+    ? `${requestedLocation.pathname}${requestedLocation.search ?? ""}`
+    : "/app";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/app", { replace: true });
+      if (session) navigate(destination, { replace: true });
     });
-  }, [navigate]);
+  }, [destination, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +36,7 @@ const Login = () => {
       return;
     }
     toast.success("Login realizado com sucesso!");
-    navigate("/app", { replace: true });
+    navigate(destination, { replace: true });
   };
 
   return (
@@ -44,7 +48,7 @@ const Login = () => {
       />
       <div className="w-full max-w-md bg-card rounded-2xl p-8 shadow-lg border border-border">
         <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-          <img src={logo} alt="PrescriMed" className="w-10 h-10" width={40} height={40} />
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">PM+</span>
           <span className="font-bold text-xl text-foreground">
             Prescri<span className="text-primary">Med+</span>
           </span>
@@ -61,7 +65,12 @@ const Login = () => {
             <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="password">Senha</Label>
+              <Link to="/recuperar-senha" className="text-xs font-medium text-primary hover:underline">
+                Esqueci minha senha
+              </Link>
+            </div>
             <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
           <Button variant="hero" className="w-full" type="submit" disabled={loading}>

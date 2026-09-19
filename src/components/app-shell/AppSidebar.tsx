@@ -92,10 +92,10 @@ const adminItems: NavigationItem[] = [
   { title: "Importar Lote", url: "/admin/importar-lote", icon: Upload },
   { title: "Curadoria", url: "/admin/curadoria", icon: ClipboardCheck },
   { title: "Medicamentos por doença", url: "/admin/medicamentos-patologia", icon: ClipboardCheck },
+  { title: "Exames por patologia", url: "/admin/exames-patologia", icon: FlaskConical },
   { title: "Promoção da Base", url: "/admin/promocao-base", icon: ArrowRightLeft },
   { title: "Auditoria da Base", url: "/admin/auditoria-base", icon: ClipboardCheck },
   { title: "Revisão Clínica", url: "/admin/revisao-clinica", icon: ClipboardCheck },
-  { title: "Vínculos Clínicos", url: "/admin/vinculos-clinicos", icon: ClipboardCheck },
   { title: "Testes Clínicos", url: "/app/testes-clinicos", icon: FlaskConical },
 ];
 

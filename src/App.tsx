@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
+import RecuperarSenha from "./pages/RecuperarSenha.tsx";
+import RedefinirSenha from "./pages/RedefinirSenha.tsx";
 import Home from "./pages/Home.tsx";
 import Patients from "./pages/Patients.tsx";
 import QuickTemplates from "./pages/QuickTemplates.tsx";
@@ -43,7 +45,6 @@ import ResultadoEscorePage from "./pages/ResultadoEscorePage";
 import PromocaoBasePage from "./pages/PromocaoBasePage";
 import AuditoriaBaseClinicaPage from "./pages/AuditoriaBaseClinicaPage";
 import RevisaoClinicaPage from "./pages/RevisaoClinicaPage";
-import VinculosClinicosPage from "./pages/VinculosClinicosPage";
 import MinhasPatologiasPage from "./pages/MinhasPatologiasPage";
 import ProtocolosEscoresPage from "./pages/ProtocolosEscoresPage";
 import AtualizacoesPage from "./pages/AtualizacoesPage";
@@ -51,6 +52,7 @@ import AssinaturaPage from "./pages/AssinaturaPage";
 import AssinaturaRetornoPage from "./pages/AssinaturaRetornoPage";
 import RequireSubscription from "./modules/billing/components/RequireSubscription";
 import { AuthProvider } from "./components/providers/AuthProvider";
+import LegalPage from "./pages/LegalPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +78,10 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          <Route path="/termos" element={<LegalPage kind="terms" />} />
+          <Route path="/privacidade" element={<LegalPage kind="privacy" />} />
 
           <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
             <Route index element={<Home />} />
@@ -118,7 +124,7 @@ const App = () => (
           <Route path="/admin/promocao-base" element={<ProtectedRoute><AdminRoute><PromocaoBasePage /></AdminRoute></ProtectedRoute>} />
           <Route path="/admin/auditoria-base" element={<ProtectedRoute><AdminRoute><AuditoriaBaseClinicaPage /></AdminRoute></ProtectedRoute>} />
           <Route path="/admin/revisao-clinica" element={<ProtectedRoute><AdminRoute><RevisaoClinicaPage /></AdminRoute></ProtectedRoute>} />
-          <Route path="/admin/vinculos-clinicos" element={<ProtectedRoute><AdminRoute><VinculosClinicosPage /></AdminRoute></ProtectedRoute>} />
+          <Route path="/admin/vinculos-clinicos" element={<ProtectedRoute><AdminRoute><VinculoMedicamentosPage /></AdminRoute></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

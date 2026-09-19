@@ -1,20 +1,17 @@
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
+import { logUsageEvent } from "@/modules/usage/usageClient";
 
 interface StripeEmbeddedCheckoutProps {
   priceId: string;
   quantity?: number;
-  customerEmail?: string;
-  userId?: string;
   returnUrl?: string;
 }
 
 export function StripeEmbeddedCheckout({
   priceId,
   quantity,
-  customerEmail,
-  userId,
   returnUrl,
 }: StripeEmbeddedCheckoutProps) {
   const fetchClientSecret = async (): Promise<string> => {
@@ -22,21 +19,21 @@ export function StripeEmbeddedCheckout({
       body: {
         priceId,
         quantity,
-        customerEmail,
-        userId,
         returnUrl,
         environment: getStripeEnvironment(),
       },
     });
     if (error || !data?.clientSecret) {
+      void logUsageEvent({ tipo: "checkout_erro", recurso: priceId });
       throw new Error(error?.message || "Não foi possível abrir o pagamento");
     }
+    void logUsageEvent({ tipo: "checkout_aberto", recurso: priceId });
     return data.clientSecret as string;
   };
 
   return (
     <div id="checkout">
-      <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret }}>
+      <EmbeddedCheckoutProvider key={priceId} stripe={getStripe()} options={{ fetchClientSecret }}>
         <EmbeddedCheckout />
       </EmbeddedCheckoutProvider>
     </div>

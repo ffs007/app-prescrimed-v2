@@ -63,14 +63,15 @@ export default function DocumentPreviewDialog(props: DocumentPreviewDialogProps)
           id_paciente: paciente.id ?? null,
           origem: "atendimento_atual",
         });
-        if (id) await logDocumentAction({ id_documento: id, tipo_documento: d.tipo, acao: "gerou_pdf" });
+        if (!id) throw new Error(`Falha ao salvar ${d.tipo}`);
+        await logDocumentAction({ id_documento: id, tipo_documento: d.tipo, acao: "gerou_pdf" });
       }
       toast.success("Documentos salvos no histórico.");
       props.onSaved?.();
       onClose();
     } catch (e) {
       console.error(e);
-      toast.error("Falha ao salvar documentos.");
+      toast.error("Os documentos não foram salvos. Tente novamente.");
     } finally {
       setSaving(false);
     }

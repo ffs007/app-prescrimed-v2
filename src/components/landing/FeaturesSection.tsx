@@ -1,6 +1,6 @@
 import {
   Pill,
-  Calculator,
+  ListChecks,
   ShieldAlert,
   FileSignature,
   Layers,
@@ -23,32 +23,31 @@ const FeaturesSection = () => {
 
         {/* Bento grid */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-px bg-ink-soft border border-ink-soft">
-          {/* Hero feature — calculator */}
+          {/* Main workflow feature */}
           <div className="md:col-span-4 md:row-span-2 bg-card p-8 lg:p-12 flex flex-col">
-            <Calculator className="h-6 w-6 text-canon-blue mb-6" />
+            <ListChecks className="h-6 w-6 text-canon-blue mb-6" />
             <h3 className="font-serif text-3xl md:text-4xl text-ink tracking-tight leading-tight mb-4">
-              Cálculo de dose por peso, idade e função renal.
+              Fluxo estruturado para prescrever e revisar.
             </h3>
             <p className="text-sm md:text-base text-ink-muted leading-relaxed max-w-[48ch] mb-8">
-              Pediatria, geriatria, gestante, paciente nefropata. Cada cálculo
-              ajustado conforme a diretriz vigente — sem você precisar abrir
-              calculadora ou bulário.
+              Dados do paciente, itens da prescrição e documentos ficam no mesmo
+              fluxo, editáveis até a conferência final pelo médico.
             </p>
             <div className="mt-auto pt-6 border-t border-ink-soft flex items-end justify-between">
               <div>
                 <div className="text-[10px] uppercase tracking-editorial text-ink-faint mb-1.5">
-                  Exemplo real de ajuste pediátrico
+                  Etapa atual
                 </div>
                 <div className="font-serif text-base text-ink/80">
-                  Paciente com <span className="text-ink font-medium">16,5 kg</span>
+                  Paciente e <span className="text-ink font-medium">contexto</span>
                 </div>
               </div>
               <div className="text-right">
                 <div className="font-serif text-lg text-ink tabular-nums">
-                  Azitromicina <span className="text-canon-blue mx-2">→</span> <span className="text-canon-blue font-medium">4,1 mL</span>
+                  Itens <span className="text-canon-blue mx-2">→</span> <span className="text-canon-blue font-medium">revisão</span>
                 </div>
                 <div className="text-[10px] uppercase tracking-editorial text-ink-faint mt-0.5">
-                  por dose
+                  antes da emissão
                 </div>
               </div>
             </div>
@@ -61,8 +60,8 @@ const FeaturesSection = () => {
               Alertas de segurança
             </h3>
             <p className="text-sm text-ink-muted leading-relaxed">
-              Gestação, lactação, alergias e interações verificadas antes da
-              impressão.
+              Sinalização de alergias e condições informadas antes da impressão,
+              sem substituir a revisão do médico.
             </p>
           </div>
 
@@ -81,11 +80,11 @@ const FeaturesSection = () => {
           <div className="md:col-span-2 bg-card p-8">
             <FileSignature className="h-6 w-6 text-canon-blue mb-5" />
             <h3 className="font-serif text-xl text-ink leading-tight mb-2">
-              Padrão CFM
+              Documento revisável
             </h3>
             <p className="text-sm text-ink-muted leading-relaxed">
-              Receita comum, especial e controle. Formato A4/A5 imprimível ou
-              PDF assinável via ICP-Brasil.
+              Receitas e documentos em formato A4/A5, prontos para revisão,
+              impressão ou geração de PDF.
             </p>
           </div>
 
@@ -93,11 +92,11 @@ const FeaturesSection = () => {
           <div className="md:col-span-2 bg-card p-8">
             <Pill className="h-6 w-6 text-canon-blue mb-5" />
             <h3 className="font-serif text-xl text-ink leading-tight mb-2">
-              Pediatria completa
+              Apoio pediátrico
             </h3>
             <p className="text-sm text-ink-muted leading-relaxed">
-              Suspensões, gotas e comprimidos com volume e fracionamento
-              calculados.
+              Cálculo por peso nos itens habilitados, com volume e posologia
+              sempre sujeitos à conferência médica.
             </p>
           </div>
 

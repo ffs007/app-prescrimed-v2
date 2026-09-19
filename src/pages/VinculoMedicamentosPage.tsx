@@ -1,8 +1,3 @@
-/**
- * Curadoria dos vínculos doença/síndrome → medicamento.
- * Permite filtrar, editar, remover e criar vínculos, além de acompanhar a
- * cobertura por ambiente (quantas doenças já têm primeira escolha).
- */
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
@@ -15,166 +10,232 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  LINK_CONTEXT_LABEL,
+  LINK_ROLE_LABEL,
+  LINK_STATUS_LABEL,
+  upsertLink,
+  type LinkContext,
+  type LinkRole,
+  type LinkStatus,
+} from "@/modules/medications/services/clinicalLinks";
 import { toast } from "sonner";
 
-const AMBIENTES = ["ambulatorial", "urgencia", "emergencia"] as const;
-const LINHAS = ["primeira", "alternativa", "sintomatico", "suporte"] as const;
-const LINHA_LABEL: Record<string, string> = {
-  primeira: "1ª escolha",
-  alternativa: "Alternativa",
-  sintomatico: "Sintomático",
-  suporte: "Suporte",
-};
+const AMBIENTES: LinkContext[] = ["ambulatorial", "urgencia", "emergencia", "hospitalar", "qualquer"];
+const PAPEIS = Object.keys(LINK_ROLE_LABEL) as LinkRole[];
 
-interface Vinculo {
+interface Patologia {
   id: string;
-  patologia_nome: string;
-  medicamento_nome: string;
-  ambiente: string;
-  linha: string;
-  via: string | null;
-  dose_adulto: string | null;
-  dose_pediatrica: string | null;
-  duracao: string | null;
-  status_revisao: string;
+  nome_patologia: string;
+  nome_normalizado: string;
 }
 
-const VinculoMedicamentosPage = () => {
+interface Medicamento {
+  id: string;
+  principio_ativo: string;
+  via_administracao: string | null;
+  dose_adulto_padrao: string | null;
+  dose_pediatrica_padrao: string | null;
+  duracao_padrao: string | null;
+}
+
+interface VinculoRow {
+  id: string;
+  condicao_nome: string;
+  condicao_normalizada: string;
+  medicamento_id: string;
+  care_context: LinkContext;
+  papel: LinkRole;
+  prioridade: number;
+  review_status: LinkStatus;
+  notes: string | null;
+}
+
+interface Vinculo extends VinculoRow {
+  medicamento: Medicamento | null;
+}
+
+const normalizar = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+export default function VinculoMedicamentosPage() {
   const qc = useQueryClient();
   const [busca, setBusca] = useState("");
   const [ambiente, setAmbiente] = useState<string>("todos");
   const [novo, setNovo] = useState({
     patologia: "",
     medicamento: "",
-    ambiente: "urgencia",
-    linha: "primeira",
-    via: "",
-    dose_adulto: "",
-    dose_pediatrica: "",
-    duracao: "",
+    ambiente: "urgencia" as LinkContext,
+    papel: "primeira_linha" as LinkRole,
+  });
+
+  const catalogos = useQuery({
+    queryKey: ["admin-vinculos-catalogos"],
+    queryFn: async () => {
+      const [patologias, medicamentos] = await Promise.all([
+        supabase
+          .from("base_patologias_ref")
+          .select("id, nome_patologia, nome_normalizado")
+          .order("nome_patologia")
+          .limit(1000),
+        supabase
+          .from("base_medicamentos_geral")
+          .select(
+            "id, principio_ativo, via_administracao, dose_adulto_padrao, dose_pediatrica_padrao, duracao_padrao",
+          )
+          .eq("ativo", true)
+          .order("principio_ativo")
+          .limit(1000),
+      ]);
+      if (patologias.error) throw patologias.error;
+      if (medicamentos.error) throw medicamentos.error;
+      return {
+        patologias: (patologias.data ?? []) as Patologia[],
+        medicamentos: (medicamentos.data ?? []) as Medicamento[],
+      };
+    },
+    staleTime: 60_000,
   });
 
   const vinculos = useQuery({
-    queryKey: ["admin-vinculos-med", busca, ambiente],
+    queryKey: ["admin-vinculos-med"],
     queryFn: async (): Promise<Vinculo[]> => {
-      let q = supabase
-        .from("patologia_medicamento" as any)
+      const { data, error } = await supabase
+        .from("clinical_condition_medication")
         .select(
-          "id, patologia_nome, medicamento_nome, ambiente, linha, via, dose_adulto, dose_pediatrica, duracao, status_revisao",
+          "id, condicao_nome, condicao_normalizada, medicamento_id, care_context, papel, prioridade, review_status, notes",
         )
-        .order("patologia_nome", { ascending: true })
-        .order("prioridade", { ascending: true })
-        .limit(400);
-      if (ambiente !== "todos") q = q.eq("ambiente", ambiente);
-      if (busca.trim().length >= 2) {
-        const t = busca.trim();
-        q = q.or(`patologia_nome.ilike.%${t}%,medicamento_nome.ilike.%${t}%`);
-      }
-      const { data, error } = await q;
+        .eq("condicao_tipo", "patologia")
+        .order("condicao_nome")
+        .order("prioridade")
+        .limit(1000);
       if (error) throw error;
-      return ((data as any) ?? []) as Vinculo[];
+
+      const medicamentos = new Map((catalogos.data?.medicamentos ?? []).map((item) => [item.id, item]));
+      return ((data ?? []) as VinculoRow[]).map((item) => ({
+        ...item,
+        medicamento: medicamentos.get(item.medicamento_id) ?? null,
+      }));
     },
+    enabled: catalogos.isSuccess,
   });
 
-  const cobertura = useQuery({
-    queryKey: ["admin-vinculos-cobertura"],
+  const ambientesPatologia = useQuery({
+    queryKey: ["admin-vinculos-cobertura-base"],
     queryFn: async () => {
-      const [links, doencas] = await Promise.all([
-        supabase
-          .from("patologia_medicamento" as any)
-          .select("patologia_normalizada, ambiente, linha")
-          .eq("linha", "primeira")
-          .limit(5000),
-        supabase.from("patologia_ambiente" as any).select("nome_patologia, ambiente").limit(5000),
-      ]);
-      if (links.error) throw links.error;
-      if (doencas.error) throw doencas.error;
-      const cobertas = new Set(
-        ((links.data as any) ?? []).map((r: any) => `${r.ambiente}|${r.patologia_normalizada}`),
-      );
-      const out: Record<string, { total: number; com: number }> = {};
-      for (const r of ((doencas.data as any) ?? []) as any[]) {
-        const amb = r.ambiente as string;
-        out[amb] = out[amb] ?? { total: 0, com: 0 };
-        out[amb].total += 1;
-        if (cobertas.has(`${amb}|${String(r.nome_patologia).toLowerCase()}`)) out[amb].com += 1;
-      }
-      return out;
+      const { data, error } = await supabase
+        .from("patologia_ambiente")
+        .select("nome_normalizado, ambiente")
+        .limit(1000);
+      if (error) throw error;
+      return data ?? [];
     },
+    staleTime: 60_000,
+  });
+
+  const cobertura = useMemo(() => {
+    const cobertas = new Set(
+      (vinculos.data ?? [])
+        .filter((item) => item.papel === "primeira_linha" && item.review_status !== "inactive")
+        .map((item) => `${item.care_context}|${item.condicao_normalizada}`),
+    );
+    const resultado: Record<string, { total: number; com: number }> = {};
+    for (const item of ambientesPatologia.data ?? []) {
+      resultado[item.ambiente] ??= { total: 0, com: 0 };
+      resultado[item.ambiente].total += 1;
+      if (cobertas.has(`${item.ambiente}|${item.nome_normalizado}`)) resultado[item.ambiente].com += 1;
+    }
+    return resultado;
+  }, [ambientesPatologia.data, vinculos.data]);
+
+  const criar = useMutation({
+    mutationFn: async () => {
+      const patologia = catalogos.data?.patologias.find(
+        (item) => normalizar(item.nome_patologia) === normalizar(novo.patologia),
+      );
+      const medicamento = catalogos.data?.medicamentos.find(
+        (item) => normalizar(item.principio_ativo) === normalizar(novo.medicamento),
+      );
+      if (!patologia) throw new Error("Escolha uma patologia existente no catálogo.");
+      if (!medicamento) throw new Error("Escolha um medicamento existente no catálogo.");
+
+      await upsertLink({
+        conditionType: "patologia",
+        conditionId: patologia.id,
+        conditionName: patologia.nome_patologia,
+        medicationId: medicamento.id,
+        role: novo.papel,
+        priority: 20,
+        careContext: novo.ambiente,
+        source: "Curadoria manual",
+      });
+    },
+    onSuccess: () => {
+      toast.success("Vínculo criado e enviado para revisão");
+      setNovo((atual) => ({ ...atual, medicamento: "" }));
+      qc.invalidateQueries({ queryKey: ["admin-vinculos-med"] });
+      qc.invalidateQueries({ queryKey: ["vinculos"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const remover = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("patologia_medicamento" as any).delete().eq("id", id);
+      const { error } = await supabase.from("clinical_condition_medication").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Vínculo removido");
       qc.invalidateQueries({ queryKey: ["admin-vinculos-med"] });
+      qc.invalidateQueries({ queryKey: ["vinculos"] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Não foi possível remover"),
+    onError: (error: Error) => toast.error(error.message),
   });
 
-  const criar = useMutation({
-    mutationFn: async () => {
-      if (novo.patologia.trim().length < 3 || novo.medicamento.trim().length < 3) {
-        throw new Error("Informe a doença e o medicamento");
-      }
-      const { error } = await supabase.from("patologia_medicamento" as any).insert({
-        patologia_nome: novo.patologia.trim(),
-        patologia_normalizada: novo.patologia.trim().toLowerCase(),
-        medicamento_nome: novo.medicamento.trim(),
-        ambiente: novo.ambiente,
-        linha: novo.linha,
-        via: novo.via || null,
-        dose_adulto: novo.dose_adulto || null,
-        dose_pediatrica: novo.dose_pediatrica || null,
-        duracao: novo.duracao || null,
-        fonte: "Curadoria manual",
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Vínculo criado");
-      setNovo({ ...novo, medicamento: "", via: "", dose_adulto: "", dose_pediatrica: "", duracao: "" });
-      qc.invalidateQueries({ queryKey: ["admin-vinculos-med"] });
-      qc.invalidateQueries({ queryKey: ["admin-vinculos-cobertura"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Não foi possível criar"),
-  });
-
-  const lista = useMemo(() => vinculos.data ?? [], [vinculos.data]);
+  const lista = useMemo(() => {
+    const termo = normalizar(busca);
+    return (vinculos.data ?? []).filter((item) => {
+      const correspondeAmbiente = ambiente === "todos" || item.care_context === ambiente;
+      const correspondeBusca =
+        termo.length < 2 ||
+        normalizar(item.condicao_nome).includes(termo) ||
+        normalizar(item.medicamento?.principio_ativo ?? "").includes(termo);
+      return correspondeAmbiente && correspondeBusca;
+    });
+  }, [ambiente, busca, vinculos.data]);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4 p-4">
       <Helmet>
-        <title>Curadoria de medicamentos por doença | PrescriMed</title>
+        <title>Medicamentos por patologia | PrescriMed</title>
         <meta
           name="description"
-          content="Gerencie os vínculos entre doenças, síndromes e medicamentos, com dose, via e linha de escolha."
+          content="Gerencie os vínculos revisáveis entre patologias e medicamentos do catálogo clínico."
         />
       </Helmet>
 
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/app">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
-          </Link>
+          <Link to="/app"><ArrowLeft className="mr-1 h-4 w-4" />Voltar</Link>
         </Button>
-        <h1 className="text-lg font-semibold">Medicamentos por doença</h1>
+        <h1 className="text-lg font-semibold">Medicamentos por patologia</h1>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Cobertura</CardTitle>
-          <CardDescription>Doenças com pelo menos uma primeira escolha cadastrada.</CardDescription>
+          <CardTitle className="text-sm">Cobertura revisada</CardTitle>
+          <CardDescription>Patologias com pelo menos um medicamento de primeira linha não inativo.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          {AMBIENTES.map((amb) => {
-            const c = cobertura.data?.[amb];
+          {["ambulatorial", "urgencia", "emergencia"].map((item) => {
+            const valor = cobertura[item];
             return (
-              <Badge key={amb} variant="outline" className="text-xs">
-                {amb}: {c ? `${c.com}/${c.total}` : "—"}
+              <Badge key={item} variant="outline" className="text-xs">
+                {LINK_CONTEXT_LABEL[item as LinkContext]}: {valor ? `${valor.com}/${valor.total}` : "—"}
               </Badge>
             );
           })}
@@ -182,38 +243,54 @@ const VinculoMedicamentosPage = () => {
       </Card>
 
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Novo vínculo</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm">Novo vínculo</CardTitle></CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2">
           <Input
-            placeholder="Doença (nome exato do catálogo)"
+            list="catalogo-patologias"
+            placeholder="Patologia"
             value={novo.patologia}
-            onChange={(e) => setNovo({ ...novo, patologia: e.target.value })}
+            onChange={(event) => setNovo({ ...novo, patologia: event.target.value })}
           />
+          <datalist id="catalogo-patologias">
+            {(catalogos.data?.patologias ?? []).map((item) => (
+              <option key={item.id} value={item.nome_patologia} />
+            ))}
+          </datalist>
           <Input
+            list="catalogo-medicamentos"
             placeholder="Medicamento"
             value={novo.medicamento}
-            onChange={(e) => setNovo({ ...novo, medicamento: e.target.value })}
+            onChange={(event) => setNovo({ ...novo, medicamento: event.target.value })}
           />
-          <Select value={novo.ambiente} onValueChange={(v) => setNovo({ ...novo, ambiente: v })}>
+          <datalist id="catalogo-medicamentos">
+            {(catalogos.data?.medicamentos ?? []).map((item) => (
+              <option key={item.id} value={item.principio_ativo} />
+            ))}
+          </datalist>
+          <Select
+            value={novo.ambiente}
+            onValueChange={(value) => setNovo({ ...novo, ambiente: value as LinkContext })}
+          >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {AMBIENTES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+              {AMBIENTES.map((item) => (
+                <SelectItem key={item} value={item}>{LINK_CONTEXT_LABEL[item]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Select value={novo.linha} onValueChange={(v) => setNovo({ ...novo, linha: v })}>
+          <Select
+            value={novo.papel}
+            onValueChange={(value) => setNovo({ ...novo, papel: value as LinkRole })}
+          >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {LINHAS.map((l) => <SelectItem key={l} value={l}>{LINHA_LABEL[l]}</SelectItem>)}
+              {PAPEIS.map((item) => (
+                <SelectItem key={item} value={item}>{LINK_ROLE_LABEL[item]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Input placeholder="Via" value={novo.via} onChange={(e) => setNovo({ ...novo, via: e.target.value })} />
-          <Input placeholder="Duração" value={novo.duracao} onChange={(e) => setNovo({ ...novo, duracao: e.target.value })} />
-          <Input placeholder="Dose adulto" value={novo.dose_adulto} onChange={(e) => setNovo({ ...novo, dose_adulto: e.target.value })} />
-          <Input placeholder="Dose pediátrica" value={novo.dose_pediatrica} onChange={(e) => setNovo({ ...novo, dose_pediatrica: e.target.value })} />
           <div className="sm:col-span-2">
-            <Button size="sm" onClick={() => criar.mutate()} disabled={criar.isPending}>
+            <Button size="sm" onClick={() => criar.mutate()} disabled={criar.isPending || catalogos.isLoading}>
               {criar.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
               Adicionar
             </Button>
@@ -224,7 +301,7 @@ const VinculoMedicamentosPage = () => {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Vínculos cadastrados</CardTitle>
-          <CardDescription>Mostrando até 400 registros por filtro.</CardDescription>
+          <CardDescription>{vinculos.data?.length ?? 0} vínculos canônicos no banco.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -232,42 +309,55 @@ const VinculoMedicamentosPage = () => {
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-8"
-                placeholder="Buscar doença ou medicamento"
+                placeholder="Buscar patologia ou medicamento"
                 value={busca}
-                onChange={(e) => setBusca(e.target.value)}
+                onChange={(event) => setBusca(event.target.value)}
               />
             </div>
             <Select value={ambiente} onValueChange={setAmbiente}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os ambientes</SelectItem>
-                {AMBIENTES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                {AMBIENTES.map((item) => (
+                  <SelectItem key={item} value={item}>{LINK_CONTEXT_LABEL[item]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <ScrollArea className="h-[420px] pr-2">
-            {vinculos.isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+          <ScrollArea className="h-[460px] pr-2">
+            {(vinculos.isLoading || catalogos.isLoading) && (
+              <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+            )}
             {!vinculos.isLoading && lista.length === 0 && (
               <p className="text-sm text-muted-foreground">Nenhum vínculo encontrado.</p>
             )}
             <div className="space-y-2">
-              {lista.map((v) => (
-                <div key={v.id} className="flex items-start gap-2 rounded-md border p-2 text-sm">
+              {lista.map((item) => (
+                <div key={item.id} className="flex items-start gap-2 rounded-md border p-2 text-sm">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium">{v.patologia_nome}</div>
+                    <div className="font-medium">{item.condicao_nome}</div>
                     <div className="text-muted-foreground">
-                      {v.medicamento_nome} · {LINHA_LABEL[v.linha] ?? v.linha} · {v.ambiente}
+                      {item.medicamento?.principio_ativo ?? "Medicamento não encontrado"} · {LINK_ROLE_LABEL[item.papel]} · {LINK_CONTEXT_LABEL[item.care_context]}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {[v.via, v.dose_adulto, v.dose_pediatrica, v.duracao].filter(Boolean).join(" · ") || "—"}
+                      {[
+                        item.medicamento?.via_administracao,
+                        item.medicamento?.dose_adulto_padrao,
+                        item.medicamento?.dose_pediatrica_padrao,
+                        item.medicamento?.duracao_padrao,
+                      ].filter(Boolean).join(" · ") || "Dados de dose no cadastro do medicamento"}
                     </div>
+                    <Badge variant={item.review_status === "reviewed" ? "secondary" : "outline"} className="mt-1 text-[10px]">
+                      {LINK_STATUS_LABEL[item.review_status]}
+                    </Badge>
                   </div>
                   <Button
                     size="icon"
                     variant="ghost"
                     aria-label="Remover vínculo"
-                    onClick={() => remover.mutate(v.id)}
+                    disabled={remover.isPending}
+                    onClick={() => remover.mutate(item.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -279,6 +369,4 @@ const VinculoMedicamentosPage = () => {
       </Card>
     </div>
   );
-};
-
-export default VinculoMedicamentosPage;
+}

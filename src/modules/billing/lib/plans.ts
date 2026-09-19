@@ -1,5 +1,9 @@
 export type PlanId = "pro_monthly" | "pro_yearly";
 
+export function isPlanId(value: string | null): value is PlanId {
+  return value === "pro_monthly" || value === "pro_yearly";
+}
+
 export interface PlanDefinition {
   id: PlanId;
   nome: string;
@@ -37,7 +41,6 @@ export const PLANS: PlanDefinition[] = [
 ];
 
 export const PREMIUM_FEATURES = [
-  "Assistente de IA e chatbot clínico",
   "Internações e AIH",
   "Notificações compulsórias",
   "Documentos avançados (relatório, laudo, encaminhamento personalizado)",

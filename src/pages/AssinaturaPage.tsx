@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Check, ExternalLink, Loader2 } from "lucide-react";
 import PageMeta from "@/components/seo/PageMeta";
 import { Badge } from "@/components/ui/badge";
@@ -9,15 +10,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useSubscription } from "@/hooks/useSubscription";
 import { getStripeEnvironment, isPaymentsConfigured } from "@/lib/stripe";
-import { PLANS, PLAN_LABEL, PREMIUM_FEATURES, type PlanId } from "@/modules/billing/lib/plans";
+import { isPlanId, PLANS, PLAN_LABEL, PREMIUM_FEATURES, type PlanId } from "@/modules/billing/lib/plans";
 import StripeEmbeddedCheckout from "@/components/payments/StripeEmbeddedCheckout";
 import PaymentTestModeBanner from "@/components/payments/PaymentTestModeBanner";
+import { logUsageEvent } from "@/modules/usage/usageClient";
 
 export default function AssinaturaPage() {
   const { user } = useAuth();
   const { subscription, isActive, isPastDue, loading } = useSubscription();
   const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (loading) return;
+    if (isActive) {
+      setCheckoutPlan(null);
+      return;
+    }
+    const requestedPlan = searchParams.get("plan");
+    if (!isPlanId(requestedPlan)) return;
+    setCheckoutPlan(requestedPlan);
+    void logUsageEvent({ tipo: "checkout_inicio", recurso: requestedPlan });
+  }, [isActive, loading, searchParams]);
+
+  const selecionarPlano = (plan: PlanId) => {
+    setCheckoutPlan(plan);
+    void logUsageEvent({ tipo: "checkout_inicio", recurso: plan });
+  };
 
   const abrirPortal = async () => {
     setPortalLoading(true);
@@ -106,7 +126,7 @@ export default function AssinaturaPage() {
                       </li>
                     ))}
                   </ul>
-                  <Button className="w-full" onClick={() => setCheckoutPlan(plan.id)}>
+                  <Button className="w-full" onClick={() => selecionarPlano(plan.id)}>
                     Assinar {plan.nome.toLowerCase()}
                   </Button>
                 </CardContent>
@@ -132,7 +152,7 @@ export default function AssinaturaPage() {
         </>
       )}
 
-      {checkoutPlan && (
+      {!loading && !isActive && checkoutPlan && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Pagamento</CardTitle>
@@ -142,8 +162,6 @@ export default function AssinaturaPage() {
             <StripeEmbeddedCheckout
               priceId={checkoutPlan}
               quantity={1}
-              customerEmail={user?.email ?? undefined}
-              userId={user?.id ?? undefined}
               returnUrl={`${window.location.origin}/app/assinatura/retorno?session_id={CHECKOUT_SESSION_ID}`}
             />
           </CardContent>

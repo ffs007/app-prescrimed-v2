@@ -93,7 +93,7 @@ const findMed = (id: number, all: Medication[]) => all.find((m) => m.id === id);
 const parseAllergyTerms = (raw: string): string[] => {
   return raw
     .toLowerCase()
-    .split(/[,;\/]|\bou\b|\be\b/)
+    .split(/[,;/]|\bou\b|\be\b/)
     .map((t) => t.trim())
     .filter((t) => t.length >= 3 && !["nega", "nenhuma", "nao", "não"].includes(t));
 };

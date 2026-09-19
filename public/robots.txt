@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://flavour-magic-hub.lovable.app/sitemap.xml
+Sitemap: https://prescrimed.app/sitemap.xml

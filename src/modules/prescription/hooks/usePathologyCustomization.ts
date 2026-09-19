@@ -154,7 +154,7 @@ export async function uploadProtocolFile(file: File): Promise<string> {
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth.user?.id;
   if (!userId) throw new Error("Sessão expirada. Entre novamente.");
-  const safe = file.name.replace(/[^\w.\-]+/g, "_");
+  const safe = file.name.replace(/[^\w.-]+/g, "_");
   const path = `${userId}/${Date.now()}-${safe}`;
   const { error } = await supabase.storage.from("protocolos-usuario").upload(path, file);
   if (error) throw error;

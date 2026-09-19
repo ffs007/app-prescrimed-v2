@@ -115,7 +115,10 @@ export default function PatientHistoryPanel({ idPaciente, pacienteAtual, onAddIt
               <PreviousPrescriptionCard
                 key={r.id}
                 row={r}
-                onView={() => { setDetail(r); idPaciente && logHistoryView({ id_paciente: idPaciente, tipo: "prescricao", item_visualizado: r.id }); }}
+                onView={() => {
+                  setDetail(r);
+                  if (idPaciente) logHistoryView({ id_paciente: idPaciente, tipo: "prescricao", item_visualizado: r.id });
+                }}
                 onReuse={() => handleReuse(r)}
                 onCompare={() => setCompareTarget(r)}
               />

@@ -7,7 +7,11 @@ export type UsageEventType =
   | "documento"
   | "busca"
   | "ia"
-  | "bloqueio_plano";
+  | "bloqueio_plano"
+  | "checkout_inicio"
+  | "checkout_aberto"
+  | "checkout_erro"
+  | "checkout_retorno";
 
 interface UsageEventInput {
   tipo: UsageEventType | string;
