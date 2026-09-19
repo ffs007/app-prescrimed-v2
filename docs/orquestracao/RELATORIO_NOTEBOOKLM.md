@@ -1,0 +1,4 @@
+# Relatório — NotebookLM
+
+PENDENTE.
+

@@ -1,0 +1,4 @@
+# Relatório — Claude Code
+
+PENDENTE.
+
