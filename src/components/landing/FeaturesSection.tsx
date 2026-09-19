@@ -1,6 +1,6 @@
 import {
   Pill,
-  Calculator,
+  ListChecks,
   ShieldAlert,
   FileSignature,
   Layers,
@@ -23,32 +23,31 @@ const FeaturesSection = () => {
 
         {/* Bento grid */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-px bg-ink-soft border border-ink-soft">
-          {/* Hero feature — calculator */}
+          {/* Main workflow feature */}
           <div className="md:col-span-4 md:row-span-2 bg-card p-8 lg:p-12 flex flex-col">
-            <Calculator className="h-6 w-6 text-canon-blue mb-6" />
+            <ListChecks className="h-6 w-6 text-canon-blue mb-6" />
             <h3 className="font-serif text-3xl md:text-4xl text-ink tracking-tight leading-tight mb-4">
-              Cálculo de dose por peso, idade e função renal.
+              Fluxo estruturado para prescrever e revisar.
             </h3>
             <p className="text-sm md:text-base text-ink-muted leading-relaxed max-w-[48ch] mb-8">
-              Quando os dados necessários estão disponíveis, a plataforma apoia
-              o cálculo e apresenta o resultado para conferência antes de entrar
-              no documento.
+              Dados do paciente, itens da prescrição e documentos ficam no mesmo
+              fluxo, editáveis até a conferência final pelo médico.
             </p>
             <div className="mt-auto pt-6 border-t border-ink-soft flex items-end justify-between">
               <div>
                 <div className="text-[10px] uppercase tracking-editorial text-ink-faint mb-1.5">
-                  Exemplo real de ajuste pediátrico
+                  Etapa atual
                 </div>
                 <div className="font-serif text-base text-ink/80">
-                  Paciente com <span className="text-ink font-medium">16,5 kg</span>
+                  Paciente e <span className="text-ink font-medium">contexto</span>
                 </div>
               </div>
               <div className="text-right">
                 <div className="font-serif text-lg text-ink tabular-nums">
-                  Azitromicina <span className="text-canon-blue mx-2">→</span> <span className="text-canon-blue font-medium">4,1 mL</span>
+                  Itens <span className="text-canon-blue mx-2">→</span> <span className="text-canon-blue font-medium">revisão</span>
                 </div>
                 <div className="text-[10px] uppercase tracking-editorial text-ink-faint mt-0.5">
-                  por dose
+                  antes da emissão
                 </div>
               </div>
             </div>

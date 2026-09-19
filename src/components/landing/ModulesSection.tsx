@@ -25,7 +25,7 @@ const modules: ModuleItem[] = [
   {
     icon: Pill,
     name: "Receita médica",
-    desc: "Comum, especial e controle. Cálculo pediátrico e checagem de interações.",
+    desc: "Medicamentos, posologia e orientações em um documento editável e revisável.",
     pill: "Núcleo clínico",
     status: "disponivel",
   },

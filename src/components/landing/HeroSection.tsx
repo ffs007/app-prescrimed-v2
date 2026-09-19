@@ -26,12 +26,12 @@ const HeroSection = () => {
           </div>
 
           <h1 className="font-serif text-[2.25rem] sm:text-[3rem] md:text-[4rem] lg:text-[5rem] leading-[1.04] tracking-tight text-balance text-ink">
-            Prescrição rápida e segura para médicos de urgência e emergência.
+            Prescreva e gere documentos clínicos em poucos minutos.
           </h1>
 
           <p className="text-base md:text-lg lg:text-xl leading-relaxed text-ink-muted mt-7 max-w-[52ch] text-pretty">
-            Monte receitas, exames, atestados e prescrições hospitalares em poucos cliques,
-            com alertas inteligentes de segurança clínica.
+            Organize medicamentos, exames e documentos em um fluxo único,
+            sempre com revisão médica antes da emissão.
           </p>
 
           <div className="flex flex-wrap items-center gap-x-8 gap-y-5 mt-10">
@@ -103,7 +103,7 @@ const HeroSection = () => {
                   Paciente
                 </div>
                 <div className="font-serif text-lg tracking-tight text-ink">
-                  Lívia M. Fontes
+                  Paciente de demonstração
                 </div>
               </div>
               <div className="text-right">
@@ -111,7 +111,7 @@ const HeroSection = () => {
                   Idade / Peso
                 </div>
                 <div className="text-xs tabular-nums text-ink font-medium">
-                  4a 2m — 16,4 kg
+                  Dados a conferir
                 </div>
               </div>
             </div>
@@ -124,24 +124,19 @@ const HeroSection = () => {
                 </span>
               </div>
               <div className="font-serif text-xl tracking-tight text-ink mb-1">
-                Amoxicilina + Clavulanato
+                Medicamento selecionado
               </div>
               <div className="text-[11px] text-ink-muted mb-3">
-                (400mg + 57mg) / 5ml — Suspensão oral
+                Apresentação definida pelo médico
               </div>
 
               <div className="anim-reveal anim-delay-1 bg-paper-alt/60 border-l-2 border-canon-blue p-3.5 mt-2">
                 <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-ink-muted mb-2">
-                  <span>OMA · 90mg/kg/dia</span>
-                  <span className="font-medium tabular-nums">Vol: 4,6 ml</span>
+                  <span>Posologia editável</span>
+                  <span className="font-medium">Revisão pendente</span>
                 </div>
                 <div className="text-[13px] text-ink leading-relaxed">
-                  Administrar{" "}
-                  <strong className="font-semibold tabular-nums">4,6 ml</strong>{" "}
-                  a cada{" "}
-                  <strong className="font-semibold tabular-nums">12h</strong>,
-                  por{" "}
-                  <strong className="font-semibold tabular-nums">10 dias</strong>.
+                  Conferir dose, via, frequência e duração antes de emitir.
                 </div>
               </div>
             </div>
@@ -149,17 +144,13 @@ const HeroSection = () => {
             {/* Medication 2 */}
             <div className="anim-reveal anim-delay-2 mb-auto pt-4 border-t border-ink-faint">
               <div className="font-serif text-xl tracking-tight text-ink mb-1">
-                Dipirona Monoidratada
+                Exame ou orientação
               </div>
               <div className="text-[11px] text-ink-muted mb-3">
-                500mg/ml — Solução em gotas
+                Item complementar do atendimento
               </div>
               <div className="anim-reveal anim-delay-3 border-l-2 border-ink/20 pl-3 py-1 text-[13px] text-ink leading-relaxed">
-                Dar{" "}
-                <strong className="font-semibold tabular-nums">16 gotas</strong>{" "}
-                a cada{" "}
-                <strong className="font-semibold tabular-nums">6h</strong>, se
-                febre &gt; 37,8 °C.
+                Conteúdo editável e sujeito à conferência médica.
               </div>
             </div>
 
