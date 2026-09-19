@@ -1,6 +1,7 @@
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
+import { logUsageEvent } from "@/modules/usage/usageClient";
 
 interface StripeEmbeddedCheckoutProps {
   priceId: string;
@@ -23,14 +24,16 @@ export function StripeEmbeddedCheckout({
       },
     });
     if (error || !data?.clientSecret) {
+      void logUsageEvent({ tipo: "checkout_erro", recurso: priceId });
       throw new Error(error?.message || "Não foi possível abrir o pagamento");
     }
+    void logUsageEvent({ tipo: "checkout_aberto", recurso: priceId });
     return data.clientSecret as string;
   };
 
   return (
     <div id="checkout">
-      <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret }}>
+      <EmbeddedCheckoutProvider key={priceId} stripe={getStripe()} options={{ fetchClientSecret }}>
         <EmbeddedCheckout />
       </EmbeddedCheckoutProvider>
     </div>

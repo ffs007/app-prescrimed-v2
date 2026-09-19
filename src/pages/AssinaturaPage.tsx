@@ -13,6 +13,7 @@ import { getStripeEnvironment, isPaymentsConfigured } from "@/lib/stripe";
 import { isPlanId, PLANS, PLAN_LABEL, PREMIUM_FEATURES, type PlanId } from "@/modules/billing/lib/plans";
 import StripeEmbeddedCheckout from "@/components/payments/StripeEmbeddedCheckout";
 import PaymentTestModeBanner from "@/components/payments/PaymentTestModeBanner";
+import { logUsageEvent } from "@/modules/usage/usageClient";
 
 export default function AssinaturaPage() {
   const { user } = useAuth();
@@ -23,8 +24,15 @@ export default function AssinaturaPage() {
 
   useEffect(() => {
     const requestedPlan = searchParams.get("plan");
-    if (isPlanId(requestedPlan)) setCheckoutPlan(requestedPlan);
+    if (!isPlanId(requestedPlan)) return;
+    setCheckoutPlan(requestedPlan);
+    void logUsageEvent({ tipo: "checkout_inicio", recurso: requestedPlan });
   }, [searchParams]);
+
+  const selecionarPlano = (plan: PlanId) => {
+    setCheckoutPlan(plan);
+    void logUsageEvent({ tipo: "checkout_inicio", recurso: plan });
+  };
 
   const abrirPortal = async () => {
     setPortalLoading(true);
@@ -113,7 +121,7 @@ export default function AssinaturaPage() {
                       </li>
                     ))}
                   </ul>
-                  <Button className="w-full" onClick={() => setCheckoutPlan(plan.id)}>
+                  <Button className="w-full" onClick={() => selecionarPlano(plan.id)}>
                     Assinar {plan.nome.toLowerCase()}
                   </Button>
                 </CardContent>
