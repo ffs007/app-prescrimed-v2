@@ -30,9 +30,9 @@ const FeaturesSection = () => {
               Cálculo de dose por peso, idade e função renal.
             </h3>
             <p className="text-sm md:text-base text-ink-muted leading-relaxed max-w-[48ch] mb-8">
-              Pediatria, geriatria, gestante, paciente nefropata. Cada cálculo
-              ajustado conforme a diretriz vigente — sem você precisar abrir
-              calculadora ou bulário.
+              Quando os dados necessários estão disponíveis, a plataforma apoia
+              o cálculo e apresenta o resultado para conferência antes de entrar
+              no documento.
             </p>
             <div className="mt-auto pt-6 border-t border-ink-soft flex items-end justify-between">
               <div>
@@ -61,8 +61,8 @@ const FeaturesSection = () => {
               Alertas de segurança
             </h3>
             <p className="text-sm text-ink-muted leading-relaxed">
-              Gestação, lactação, alergias e interações verificadas antes da
-              impressão.
+              Sinalização de alergias e condições informadas antes da impressão,
+              sem substituir a revisão do médico.
             </p>
           </div>
 
@@ -81,11 +81,11 @@ const FeaturesSection = () => {
           <div className="md:col-span-2 bg-card p-8">
             <FileSignature className="h-6 w-6 text-canon-blue mb-5" />
             <h3 className="font-serif text-xl text-ink leading-tight mb-2">
-              Padrão CFM
+              Documento revisável
             </h3>
             <p className="text-sm text-ink-muted leading-relaxed">
-              Receita comum, especial e controle. Formato A4/A5 imprimível ou
-              PDF assinável via ICP-Brasil.
+              Receitas e documentos em formato A4/A5, prontos para revisão,
+              impressão ou geração de PDF.
             </p>
           </div>
 
@@ -93,11 +93,11 @@ const FeaturesSection = () => {
           <div className="md:col-span-2 bg-card p-8">
             <Pill className="h-6 w-6 text-canon-blue mb-5" />
             <h3 className="font-serif text-xl text-ink leading-tight mb-2">
-              Pediatria completa
+              Apoio pediátrico
             </h3>
             <p className="text-sm text-ink-muted leading-relaxed">
-              Suspensões, gotas e comprimidos com volume e fracionamento
-              calculados.
+              Cálculo por peso nos itens habilitados, com volume e posologia
+              sempre sujeitos à conferência médica.
             </p>
           </div>
 

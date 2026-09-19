@@ -52,33 +52,33 @@ const HeroSection = () => {
 
           <p className="mt-5 text-xs text-ink-faint flex items-center gap-2">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Prescreva em segundos. Reduza esquecimentos no plantão.
+            Fluxo desenhado para concluir a prescrição em poucos minutos.
           </p>
 
           {/* Authority line */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mt-16 pt-8 border-t border-ink-soft">
             <div className="flex flex-col gap-1.5">
               <span className="text-[10px] uppercase tracking-editorial text-ink-faint">
-                Conformidade legal
+                Privacidade
               </span>
               <span className="font-serif text-base text-ink">
-                Aderência estrita à LGPD
+                Minimização de dados
               </span>
             </div>
             <div className="flex flex-col gap-1.5 sm:border-l sm:border-ink-soft sm:pl-8">
               <span className="text-[10px] uppercase tracking-editorial text-ink-faint">
-                Padrão regulatório
+                Segurança clínica
               </span>
               <span className="font-serif text-base text-ink">
-                ICP-Brasil & CFM
+                Revisão médica obrigatória
               </span>
             </div>
             <div className="flex flex-col gap-1.5 sm:border-l sm:border-ink-soft sm:pl-8">
               <span className="text-[10px] uppercase tracking-editorial text-ink-faint">
-                Base farmacológica
+                Conteúdo clínico
               </span>
               <span className="font-serif text-base text-ink">
-                Anvisa & DEF atualizados
+                Curadoria rastreável
               </span>
             </div>
           </div>
@@ -166,10 +166,10 @@ const HeroSection = () => {
             {/* Footer action */}
             <div className="anim-reveal anim-delay-4 pt-6 border-t border-ink-soft mt-6">
               <div className="w-full bg-ink text-paper text-center py-3.5 text-[10px] font-semibold tracking-editorial uppercase">
-                Assinar & emitir documento
+                Revisar & gerar documento
               </div>
               <div className="text-center mt-2.5 text-[10px] uppercase tracking-editorial text-ink-faint">
-                Protocolo ICP-Brasil
+                Assinatura pelo médico
               </div>
             </div>
           </div>

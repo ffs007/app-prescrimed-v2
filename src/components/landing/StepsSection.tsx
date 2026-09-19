@@ -15,7 +15,7 @@ const steps = [
     number: "03",
     title: "Revise e emita",
     description:
-      "Documento padrão CFM, com checagens de segurança. Imprima em A4/A5 ou compartilhe em PDF assinável.",
+      "Confira cada item e ajuste o documento. Depois, imprima em A4/A5 ou gere o PDF para assinatura pelo médico.",
   },
 ];
 

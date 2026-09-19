@@ -5,11 +5,11 @@ const painPoints = [
   },
   {
     before: "Recalcular dose pediátrica e abrir bulário no meio do caso",
-    after: "Cálculo automático por peso, idade, gestação e função renal",
+    after: "Cálculo assistido nos itens habilitados, com revisão antes da emissão",
   },
   {
     before: "Receita e atestado digitados no Word, sem padrão visual",
-    after: "Documento clínico padronizado CFM, pronto para imprimir ou enviar",
+    after: "Documento clínico revisável, pronto para imprimir ou gerar em PDF",
   },
   {
     before: "Refazer dados do paciente em cada documento emitido",

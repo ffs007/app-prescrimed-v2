@@ -41,7 +41,6 @@ export const PLANS: PlanDefinition[] = [
 ];
 
 export const PREMIUM_FEATURES = [
-  "Assistente de IA e chatbot clínico",
   "Internações e AIH",
   "Notificações compulsórias",
   "Documentos avançados (relatório, laudo, encaminhamento personalizado)",

@@ -1,18 +1,18 @@
 const items = [
   {
     label: "Conformidade legal",
-    value: "LGPD & CFM",
-    detail: "Aderência estrita à LGPD e formato de documento conforme padrão CFM.",
+    value: "Privacidade por padrão",
+    detail: "Minimização de dados e controles de acesso orientados à LGPD. O médico revisa e assina o documento emitido.",
   },
   {
-    label: "Assinatura digital",
-    value: "ICP-Brasil",
-    detail: "Compatível com certificado digital para validade jurídica plena do documento.",
+    label: "Segurança clínica",
+    value: "Revisão obrigatória",
+    detail: "Nenhuma sugestão substitui o julgamento clínico. O documento permanece editável antes da emissão.",
   },
   {
     label: "Base farmacológica",
-    value: "Anvisa & DEF",
-    detail: "Doses, apresentações e diretrizes a partir de fontes oficiais brasileiras.",
+    value: "Curadoria rastreável",
+    detail: "Conteúdo clínico com status de revisão e referências; itens incompletos não devem ser tratados como conduta pronta.",
   },
 ];
 
