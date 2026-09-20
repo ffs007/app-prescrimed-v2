@@ -4,6 +4,12 @@ export function isPlanId(value: string | null): value is PlanId {
   return value === "pro_monthly" || value === "pro_yearly";
 }
 
+export function getSignupDestination(requestedPlan: string | null): string {
+  return isPlanId(requestedPlan)
+    ? `/app/assinatura?plan=${requestedPlan}`
+    : "/app/prescricao/nova";
+}
+
 export interface PlanDefinition {
   id: PlanId;
   nome: string;
