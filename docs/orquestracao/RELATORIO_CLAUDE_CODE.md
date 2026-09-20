@@ -64,7 +64,8 @@ Esta versão (2026-09-20) consolida o que mudou depois das correções, cruzando
   - Pendente: migrations `20260919120000` a `20260919120300` (primeiro numa branch do Supabase, depois `db push`).
   - Pendente: deploy de `public-document-link`, `ai-assist`, `clinical-ai`, `iv-extract`, `smart-input-extract`, `create-checkout` e `create-portal-session`.
   - Para destravar: fazer `supabase login` com um token válido para esse projeto, ou informar o acesso pelo MCP.
-- **Código sem rota: `DocumentsToGenerateDialog`.** Nenhum arquivo o importa (só ele mesmo), e ele é o único caminho do `DocumentPreviewDialog`. A emissão real passa a usar `persistEmission`. **Decisão (Q6): religar**, como etapa de revisão pré-emissão sobre a emissão existente, e não como segundo emissor (desenho e motivos em `RELATORIO_PRESCRIMED_PERFEITO.md`, seção 5). Ainda não implementado.
+- **Código fantasma resolvido (2026-09-20): `DocumentsToGenerateDialog` e `DocumentPreviewDialog` removidos.** Decisão Q6 era "religar", mas religar como estava duplicava o classificador de receita e imprimia sem `persistEmission`. O que agregavam (perfil de assinatura, gate de revisão final) entrou na `ReviewScreen` já existente. Detalhe em `RELATORIO_PRESCRIMED_PERFEITO.md`, seção 5 (Q6) e passo 0.7.
+- **Achado nesta rodada: bypass do fail-closed no preview lateral.** O botão "Imprimir/PDF" do preview do desktop chamava `handlePrint` puro (sem validação, sem `persistEmission`, sem gate de revisão). Corrigido: passa a chamar `handleEmit`, o mesmo caminho da "Revisar e emitir".
 - **Perfil clínico do paciente** usado nos alertas vale só no atendimento em curso; não persiste em `pacientes_perfil_clinico`.
 - **Smart Input:** itens de diagnóstico e cuidado de enfermagem extraídos são ignorados, com aviso.
 - **Credenciais de IA:** o hook do cliente lê a view mascarada, mas a RLS da tabela ainda permite ler a chave bruta.
