@@ -1,6 +1,7 @@
 // Etapa 20 — Hook de perfis de assinatura.
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 import type { AssinaturaPerfil } from "../lib/types";
 
 export function useSignatureProfiles() {
@@ -9,8 +10,11 @@ export function useSignatureProfiles() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("assinatura_perfis").select("*").order("padrao", { ascending: false });
+    if (error) {
+      reportError("useSignatureProfiles.load", error, "Não foi possível carregar os perfis de assinatura.");
+    }
     setProfiles((data ?? []) as AssinaturaPerfil[]);
     setLoading(false);
   }, []);

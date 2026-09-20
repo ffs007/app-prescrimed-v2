@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Calculator, Eye, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,9 @@ import { useEmissionHistory, type EmissionRecord, type NewEmissionRecord } from 
 import { savePrescriptionRecord } from "@/modules/prescription/services/prescriptionRecords";
 import { attachDocumentPdf, persistEmission, resolveDocumentoTipo } from "@/modules/documents/lib/persistEmission";
 import { logDocumentAction } from "@/modules/documents/lib/documentSave";
+import { useDocumentsSettings } from "@/modules/documents/hooks/useDocumentsSettings";
+import { useSignatureProfiles } from "@/modules/documents/hooks/useSignatureProfiles";
+import { mergeClinicInfo, mergeSignatureConfig } from "@/modules/documents/lib/applySignatureProfile";
 import { buildPdfOptions, downloadBlob } from "@/modules/documents/lib/pdfPrint";
 import SmartInputDialog from "@/modules/smart-input/SmartInputDialog";
 import ScoresDialog from "@/modules/scores/ScoresDialog";
@@ -136,6 +139,40 @@ const Dashboard = () => {
   const [customMedications, setCustomMedications] = useLocalStorage<Medication[]>("custom-medications", []);
   const [customTemplates, setCustomTemplates] = useLocalStorage<PrescriptionTemplate[]>("custom-templates", []);
 
+  /* ============================================================
+   * Etapa 0.7 — perfil de assinatura (assinatura_perfis) e gate de
+   * revisão final (documentos_settings.exigir_revisao_final_concluida),
+   * religados sobre a emissão real (ReviewScreen + PrintArea).
+   * ============================================================ */
+  const { settings: documentsSettings } = useDocumentsSettings();
+  const { profiles: signatureProfiles } = useSignatureProfiles();
+  const [signatureProfileId, setSignatureProfileId] = useState<string>("");
+  const [finalReviewConfirmed, setFinalReviewConfirmed] = useState(false);
+
+  useEffect(() => {
+    if (signatureProfileId || signatureProfiles.length === 0) return;
+    const padrao = signatureProfiles.find((p) => p.padrao) ?? signatureProfiles[0];
+    setSignatureProfileId(padrao.id);
+  }, [signatureProfiles, signatureProfileId]);
+
+  const selectedSignatureProfile = useMemo(
+    () => signatureProfiles.find((p) => p.id === signatureProfileId) ?? null,
+    [signatureProfiles, signatureProfileId],
+  );
+
+  /** Assinatura/carimbo e dados da unidade que vão no PrintArea — perfil escolhido, com o Settings local como fallback. */
+  const resolvedSignatureConfig = useMemo(
+    () => mergeSignatureConfig(signatureConfig, selectedSignatureProfile),
+    [selectedSignatureProfile, signatureConfig],
+  );
+  const resolvedClinicInfo = useMemo(
+    () => mergeClinicInfo(clinicInfo, selectedSignatureProfile),
+    [selectedSignatureProfile, clinicInfo],
+  );
+
+  const requireFinalReview = documentsSettings?.exigir_revisao_final_concluida ?? true;
+  const finalReviewOk = !requireFinalReview || finalReviewConfirmed;
+
   // Module-specific state
   const [atestado, setAtestado] = useState<AtestadoData>(EMPTY_ATESTADO);
   const [exames, setExames] = useState<ExamesData>(EMPTY_EXAMES);
@@ -152,6 +189,8 @@ const Dashboard = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Cada abertura da revisão final exige nova confirmação — não herda de uma sessão anterior.
+  useEffect(() => { if (reviewOpen) setFinalReviewConfirmed(false); }, [reviewOpen]);
   const [printOpen, setPrintOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -613,8 +652,8 @@ const Dashboard = () => {
     aih,
     apac,
     notificacao,
-    clinicInfo,
-    signatureConfig,
+    clinicInfo: resolvedClinicInfo,
+    signatureConfig: resolvedSignatureConfig,
     ...extra,
   });
 
@@ -687,8 +726,20 @@ const Dashboard = () => {
       selectedFilter: group.items.map((it) => it.selected.id),
     });
 
+  /**
+   * Gate de revisão final (documentos_settings.exigir_revisao_final_concluida).
+   * Checado aqui, não só no disabled do botão: nenhum caminho de emissão passa sem
+   * a confirmação quando o admin exige — o botão desabilitado é só a UI dessa regra.
+   */
+  const blockIfReviewPending = (): boolean => {
+    if (finalReviewOk) return false;
+    toast.error("Confirme a revisão final antes de emitir");
+    return true;
+  };
+
   /** Imprime apenas um grupo regulatório (filtra SelectedMeds). */
   const handlePrintGroup = async (group: RegulatoryGroup): Promise<void> => {
+    if (blockIfReviewPending()) return;
     const snapshot = groupSnapshot(group);
     const documentoId = await persistOrWarn(snapshot, "imprimiu", group.family);
     if (!documentoId) return;
@@ -701,6 +752,7 @@ const Dashboard = () => {
 
   /** Gera PDF apenas do grupo selecionado, usando html2pdf no nó .prescription-print-area. */
   const handleDownloadGroup = async (group: RegulatoryGroup): Promise<void> => {
+    if (blockIfReviewPending()) return;
     setActiveGroup(group);
     setPrintOpen(true);
     // Aguarda render do PrintArea filtrado antes de capturar
@@ -781,6 +833,8 @@ const Dashboard = () => {
 
   // Print with validation + clinical safety gate
   const handleEmit = async (): Promise<void> => {
+    // Camada 0: revisão final concluída (documentos_settings), quando exigida.
+    if (blockIfReviewPending()) return;
     // Camada 1: validação estrutural
     if (!validation.canEmit) {
       toast.error("Não é possível emitir", {
@@ -1112,8 +1166,11 @@ const Dashboard = () => {
     aih,
     apac,
     notificacao,
-    clinicInfo,
-    onPrint: handlePrint,
+    // Resolvido com o perfil de assinatura escolhido: o que aparece na prévia é o que sai no PrintArea.
+    clinicInfo: resolvedClinicInfo,
+    // handleEmit, não handlePrint: o botão do preview lateral (fora da ReviewScreen) tinha o
+    // mesmo peso de "emitir" sem passar por validação/segurança/persistEmission/gate de revisão.
+    onPrint: handleEmit,
     onClear: handleClear,
   };
 
@@ -1490,7 +1547,7 @@ const Dashboard = () => {
           selected, atestado, exames, encaminhamento,
           declaracao, relatorio, orientacoes, procedimento,
           aih, apac, notificacao,
-          clinicInfo,
+          clinicInfo: resolvedClinicInfo,
         })}
         onPrint={handleEmit}
         preview={<DocumentPreview {...previewProps} hideActions />}
@@ -1500,10 +1557,16 @@ const Dashboard = () => {
               result={regulatoryResult}
               onPrintGroup={handlePrintGroup}
               onDownloadGroup={handleDownloadGroup}
-              canEmit={validation.canEmit && assessment.status !== "blocked"}
+              canEmit={validation.canEmit && assessment.status !== "blocked" && finalReviewOk}
             />
           ) : undefined
         }
+        signatureProfiles={signatureProfiles}
+        selectedProfileId={signatureProfileId}
+        onSelectProfile={setSignatureProfileId}
+        requireFinalReview={requireFinalReview}
+        finalReviewConfirmed={finalReviewConfirmed}
+        onToggleFinalReview={setFinalReviewConfirmed}
       />
 
       {/* Print modal — usa replayRecord quando reabrindo do histórico */}
@@ -1529,8 +1592,8 @@ const Dashboard = () => {
         aih={replayRecord?.aih ?? aih}
         apac={replayRecord?.apac ?? apac}
         notificacao={replayRecord?.notificacao ?? notificacao}
-        clinicInfo={replayRecord?.clinicInfo ?? clinicInfo}
-        signatureConfig={replayRecord?.signatureConfig ?? signatureConfig}
+        clinicInfo={replayRecord?.clinicInfo ?? resolvedClinicInfo}
+        signatureConfig={replayRecord?.signatureConfig ?? resolvedSignatureConfig}
         selectedFilter={
           replayRecord?.selectedFilter
             ?? (activeGroup ? activeGroup.items.map((it) => it.selected.id) : undefined)
