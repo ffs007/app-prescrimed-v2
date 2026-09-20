@@ -12,8 +12,9 @@ async function ensurePromoCoupon(stripe: ReturnType<typeof createStripeClient>) 
   try {
     const existing = await stripe.coupons.retrieve(PROMO_COUPON_ID);
     if (existing && !(existing as any).deleted) return PROMO_COUPON_ID;
-  } catch (_e) {
-    // não existe ainda
+  } catch (e) {
+    // Só "cupom inexistente" é esperado aqui; qualquer outra falha do Stripe deve subir.
+    if ((e as { code?: string }).code !== "resource_missing") throw e;
   }
   await stripe.coupons.create({
     id: PROMO_COUPON_ID,
@@ -158,8 +159,9 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("create-checkout error:", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 400,
+    const unauthorized = (e as Error).message === "Unauthorized";
+    return new Response(JSON.stringify({ error: unauthorized ? "Unauthorized" : "checkout-indisponivel" }), {
+      status: unauthorized ? 401 : 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

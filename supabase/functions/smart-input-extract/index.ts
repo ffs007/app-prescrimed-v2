@@ -161,14 +161,15 @@ Deno.serve(async (req) => {
       }),
     });
   } catch (e) {
-    return json(502, { error: "ai-unreachable", detail: String(e) });
+    console.error("smart-input-extract: ai-unreachable", e);
+    return json(502, { error: "ai-unreachable" });
   }
 
   if (aiResp.status === 429) return json(429, { error: "rate-limited" });
   if (aiResp.status === 402) return json(402, { error: "credits-exhausted" });
   if (!aiResp.ok) {
-    const t = await aiResp.text();
-    return json(502, { error: "ai-error", detail: t });
+    console.error("smart-input-extract: ai-error", (await aiResp.text()).slice(0, 500));
+    return json(502, { error: "ai-error" });
   }
 
   const data = await aiResp.json();
