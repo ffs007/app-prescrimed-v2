@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { SelectedMed, ClinicInfo, SignatureConfig } from "../types/prescription";
 import type { DocumentAction } from "../components/ActionGrid";
 import type { CareContext } from "../components/ContextHeader";
@@ -22,6 +23,8 @@ export interface EmissionRecord {
   id: string;
   emittedAt: string; // ISO
   action: DocumentAction;
+  /** ID do registro em documentos_gerados (preenchido quando a emissão foi persistida no banco). */
+  documentoId?: string;
   documentTitle: string;
   patientName: string;
   isPediatric: boolean;
@@ -58,7 +61,8 @@ const safeParse = (raw: string | null): EmissionRecord[] => {
   try {
     const data = JSON.parse(raw);
     return Array.isArray(data) ? data : [];
-  } catch {
+  } catch (error) {
+    console.error("Histórico local de emissões corrompido; ignorando os dados salvos", error);
     return [];
   }
 };
@@ -75,8 +79,9 @@ export const useEmissionHistory = () => {
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    } catch {
-      /* quota — ignora */
+    } catch (error) {
+      console.error("Falha ao salvar o histórico local de emissões", error);
+      toast.warning("Histórico local de emissões não pôde ser salvo (armazenamento cheio). Reabrir esta emissão por aqui pode falhar.");
     }
   }, [history]);
 

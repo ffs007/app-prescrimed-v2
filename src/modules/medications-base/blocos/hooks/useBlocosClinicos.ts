@@ -22,7 +22,7 @@ export function useBlocosClinicos() {
       supabase.from("base_blocos_clinicos" as any).select("*").order("ordem"),
       supabase.from("base_blocos_medicamentos_planejados" as any).select("*"),
       supabase.from("base_medicamentos_geral" as any).select("id, principio_ativo, nome_normalizado, status_revisao, categoria_clinica, cid_relacionados, queixas_relacionadas"),
-      supabase.from("base_apresentacoes_medicamentos" as any).select("medicamento_id"),
+      supabase.from("base_apresentacoes_medicamentos" as any).select("id_medicamento"),
       supabase.from("base_blocos_checklist_itens" as any).select("bloco_slug, status"),
     ]);
 
@@ -41,7 +41,7 @@ export function useBlocosClinicos() {
 
     const apresByMed = new Map<string, number>();
     apres.forEach((a) => {
-      apresByMed.set(a.medicamento_id, (apresByMed.get(a.medicamento_id) ?? 0) + 1);
+      apresByMed.set(a.id_medicamento, (apresByMed.get(a.id_medicamento) ?? 0) + 1);
     });
 
     const result: BlocoAgregado[] = blocos.map((bloco) => {

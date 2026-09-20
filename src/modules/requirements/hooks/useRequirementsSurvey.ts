@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { SURVEY_VERSION } from "../lib/questionnaire";
 import type { SurveyAnswer, SurveyResponse } from "../lib/types";
+import { reportError } from "@/lib/reportError";
 
 const STORAGE_KEY = "prescrimed:requirements-survey:v1";
 
@@ -8,8 +9,8 @@ const initial = (): SurveyResponse => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as SurveyResponse;
-  } catch {
-    /* ignora leitura inválida */
+  } catch (error) {
+    reportError("modules/requirements/hooks/useRequirementsSurvey", error);
   }
   return { version: SURVEY_VERSION, updatedAt: "", respondent: {}, answers: {} };
 };
@@ -20,8 +21,8 @@ export function useRequirementsSurvey() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(response));
-    } catch {
-      /* armazenamento indisponível */
+    } catch (error) {
+      reportError("modules/requirements/hooks/useRequirementsSurvey", error);
     }
   }, [response]);
 

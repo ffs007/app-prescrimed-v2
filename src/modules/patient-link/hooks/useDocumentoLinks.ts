@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { logBetaEvent } from "../../beta/lib/eventLog";
+import { reportError } from "@/lib/reportError";
 
 export interface DocumentoLink {
   id: string;
@@ -62,7 +63,11 @@ export const useDocumentoLinks = (id_documento?: string) => {
   }, [load]);
 
   const revoke = useCallback(async (id: string) => {
-    await supabase.from("documento_links_publicos").update({ status: "revogado" }).eq("id", id);
+    const { error } = await supabase.from("documento_links_publicos").update({ status: "revogado" }).eq("id", id);
+    if (error) {
+      reportError("useDocumentoLinks.revoke", error, "Não foi possível revogar o link.");
+      return;
+    }
     logBetaEvent("link_revogado", { id });
     load();
   }, [load]);

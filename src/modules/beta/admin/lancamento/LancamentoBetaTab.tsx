@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { Download, Rocket, Pause, AlertTriangle, CheckCircle2, ChevronRight, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
+import { reportError } from "@/lib/reportError";
 import {
   ChecklistItem, ChecklistStatus, SECOES, STATUS_LABEL, STATUS_OPTIONS,
   computeDecision, statusBadgeClass,
@@ -93,7 +94,7 @@ export default function LancamentoBetaTab() {
 
   const logAcao = async (acao: string, versao_beta?: string | null, status_anterior?: string | null, status_novo?: string | null, observacao?: string | null, motivo?: string | null) => {
     const { data: userData } = await supabase.auth.getUser();
-    await supabase.from("lancamento_log" as any).insert({
+    const { error } = await supabase.from("lancamento_log" as any).insert({
       acao,
       versao_beta: versao_beta ?? null,
       status_anterior: status_anterior ?? null,
@@ -102,6 +103,7 @@ export default function LancamentoBetaTab() {
       motivo: motivo ?? null,
       observacao: observacao ?? null,
     });
+    if (error) reportError("LancamentoBetaTab.logAcao", error, "A ação não foi registrada no log de lançamento.");
   };
 
   const handleRelease = async () => {

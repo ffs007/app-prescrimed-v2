@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 import {
   analisarMedicamento, analisarModelos, calcularSaude, detectarDuplicidades,
   norm, type Duplicidade, type Finding, type MedFull, type Modelo, type ModeloItem,
@@ -125,7 +126,7 @@ export function useQualidadeBase() {
       usuario_id: userData.user?.id ?? null,
     });
     if (error) throw error;
-    await supabase.from("log_qualidade_base_medicamentosa").insert({
+    const { error: logError } = await supabase.from("log_qualidade_base_medicamentosa").insert({
       medicamento_id: f.medicamento_id,
       principio_ativo: f.principio_ativo,
       rule_code: f.rule_code,
@@ -136,6 +137,7 @@ export function useQualidadeBase() {
       justificativa,
       usuario_id: userData.user?.id ?? null,
     });
+    if (logError) reportError("useQualidadeBase.log", logError, "A justificativa foi salva, mas o log de qualidade não foi gravado.");
     refresh();
   }, [refresh]);
 

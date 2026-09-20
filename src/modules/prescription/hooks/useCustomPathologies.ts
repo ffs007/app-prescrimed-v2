@@ -7,7 +7,7 @@
  */
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseUntyped } from "@/integrations/supabase/untyped";
+import { supabase } from "@/integrations/supabase/client";
 import type {
   ClinicalEnvironment,
   ClinicalSeverity,
@@ -92,7 +92,7 @@ export function useCustomPathologiesQuery() {
     queryKey: customPathologiesQueryKey,
     staleTime: 60 * 1000,
     queryFn: async (): Promise<CustomPathologyRow[]> => {
-      const { data, error } = await supabaseUntyped
+      const { data, error } = await supabase
         .from("patologias_usuario")
         .select(
           "id, nome, cid10, categoria, ambientes, gravidade, sinonimos, medicamentos, observacoes, ativo",
@@ -126,7 +126,7 @@ export function useCustomPathologyMutations() {
 
   const create = useMutation({
     mutationFn: async (input: CustomPathologyInput) => {
-      const { error } = await supabaseUntyped
+      const { error } = await supabase
         .from("patologias_usuario")
         .insert(toPayload(input));
       if (error) throw error;
@@ -136,7 +136,7 @@ export function useCustomPathologyMutations() {
 
   const update = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: CustomPathologyInput }) => {
-      const { error } = await supabaseUntyped
+      const { error } = await supabase
         .from("patologias_usuario")
         .update(toPayload(input))
         .eq("id", id);
@@ -147,7 +147,7 @@ export function useCustomPathologyMutations() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabaseUntyped
+      const { error } = await supabase
         .from("patologias_usuario")
         .delete()
         .eq("id", id);

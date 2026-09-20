@@ -2,6 +2,7 @@
 
 export type AIProvider = "openrouter" | "perplexity" | "gateway";
 
+/** As chaves chegam mascaradas (ex.: "sk-o••••a1b2"): o valor real nunca é exposto ao navegador. */
 export interface AICredentials {
   perplexity_key: string | null;
   openrouter_key: string | null;
