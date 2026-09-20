@@ -80,8 +80,13 @@ export default function EscoresTraumaPage() {
       toast({ title: "Não foi possível salvar", description: "Faça login para salvar resultados.", variant: "destructive" });
       return;
     }
-    await navigator.clipboard.writeText(buildShareUrl(salvo.share_token)).catch(() => undefined);
-    toast({ title: "Resultado salvo", description: "Link compartilhável copiado." });
+    try {
+      await navigator.clipboard.writeText(buildShareUrl(salvo.share_token));
+      toast({ title: "Resultado salvo", description: "Link compartilhável copiado." });
+    } catch (error) {
+      console.error("[EscoresTraumaPage] falha ao copiar o link compartilhável", error);
+      toast({ title: "Resultado salvo", description: "Não foi possível copiar o link automaticamente; copie-o pelo histórico.", variant: "destructive" });
+    }
   };
 
   return (

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Estrato, ResultadoEscore } from "@/lib/traumaScores";
+import { reportError } from "@/lib/reportError";
 
 export interface ResultadoSalvo {
   id: string;
@@ -62,7 +63,11 @@ export function useResultadosTrauma() {
 
   const remover = useCallback(
     async (id: string) => {
-      await supabase.from("resultados_escores_trauma").delete().eq("id", id);
+      const { error } = await supabase.from("resultados_escores_trauma").delete().eq("id", id);
+      if (error) {
+        reportError("useResultadosTrauma.remover", error, "Não foi possível excluir o resultado.");
+        return;
+      }
       await load();
     },
     [load],
