@@ -40,6 +40,7 @@ interface EnvMeta {
 }
 
 const SEVERITY_RANK: Record<string, number> = { leve: 1, moderada: 2, grave: 3, critica: 4 };
+const ALL_ENVIRONMENTS: ClinicalEnvironment[] = ["ambulatorial", "urgencia", "emergencia"];
 const isEnv = (v: string): v is ClinicalEnvironment =>
   v === "ambulatorial" || v === "urgencia" || v === "emergencia";
 
@@ -180,7 +181,10 @@ export function usePathologiesCatalog(extra: Pathology[] = []) {
     }
     for (const [key, pathology] of byName) {
       const meta = envByKey.get(key);
-      if (!meta) continue;
+      if (!meta) {
+        pathology.environments = [...ALL_ENVIRONMENTS];
+        continue;
+      }
       pathology.environments = meta.environments;
       pathology.severity = meta.severity;
       pathology.specialty = meta.specialty ?? pathology.category;
