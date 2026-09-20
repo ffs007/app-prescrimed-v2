@@ -142,7 +142,8 @@ export function useContinuousMedications(idPaciente: string | null) {
   }, [load]);
 
   const remove = useCallback(async (id: string) => {
-    await supabase.from("medicacoes_uso_continuo").delete().eq("id", id);
+    const { error } = await supabase.from("medicacoes_uso_continuo").delete().eq("id", id);
+    if (error) throw error;
     await load();
   }, [load]);
 

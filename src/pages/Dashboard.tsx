@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
-import { Eye, Sparkles, RefreshCw } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Calculator, Eye, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -70,6 +71,15 @@ import RegulatoryReviewPanel from "@/modules/prescription/components/RegulatoryR
 import EmissionHistoryDrawer from "@/modules/prescription/components/EmissionHistoryDrawer";
 import { useEmissionHistory, type EmissionRecord, type NewEmissionRecord } from "@/modules/prescription/hooks/useEmissionHistory";
 import { savePrescriptionRecord } from "@/modules/prescription/services/prescriptionRecords";
+import { attachDocumentPdf, persistEmission, resolveDocumentoTipo } from "@/modules/documents/lib/persistEmission";
+import { logDocumentAction } from "@/modules/documents/lib/documentSave";
+import { buildPdfOptions, downloadBlob } from "@/modules/documents/lib/pdfPrint";
+import SmartInputDialog from "@/modules/smart-input/SmartInputDialog";
+import ScoresDialog from "@/modules/scores/ScoresDialog";
+import AssistiveDecisionSupport from "@/modules/prescription/components/AssistiveDecisionSupport";
+import type { ReuseItem } from "@/modules/patient-history/lib/types";
+import type { ExtractedItem } from "@/modules/smart-input/lib/types";
+import type { ReceiptFamily } from "@/modules/prescription/services/regulatoryTaxonomy";
 
 const EMPTY_CLINIC: ClinicInfo = { clinicName: "", doctorName: "", crm: "", specialty: "", address: "", phone: "", email: "" };
 const EMPTY_SIGNATURE: SignatureConfig = { signatureText: "", signatureImageUrl: "" };
@@ -144,6 +154,10 @@ const Dashboard = () => {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [smartOpen, setSmartOpen] = useState(() => searchParams.get("smart") === "1");
+  const [scoresOpen, setScoresOpen] = useState(false);
+  const atendimentoId = useRef(`atd-${crypto.randomUUID()}`);
   /** Grupo regulatório atualmente sendo emitido (para filtrar PrintArea). */
   const [activeGroup, setActiveGroup] = useState<RegulatoryGroup | null>(null);
   /** Resumo da automação aplicada ao carregar a última patologia (para feedback + desfazer). */
@@ -155,6 +169,7 @@ const Dashboard = () => {
   } | null>(null);
   /** Registro de histórico em modo replay — quando definido, PrintArea usa estes dados em vez do estado atual. */
   const [replayRecord, setReplayRecord] = useState<EmissionRecord | null>(null);
+  const [printedDocumentoId, setPrintedDocumentoId] = useState<string | null>(null);
 
   // Histórico de emissões persistido
   const emissionHistory = useEmissionHistory();
@@ -272,6 +287,106 @@ const Dashboard = () => {
     toast.success(`${data.name.trim()} adicionado`);
   };
 
+
+  /** Reaproveita itens de atendimentos anteriores (já revisados no painel de histórico). */
+  const handleReuseItems = (items: ReuseItem[]) => {
+    const stamp = Date.now();
+    const newMeds = items
+      .filter((it) => it.kind === "medicamento")
+      .map((it, idx) => {
+        const name = (it.principio_ativo ?? it.titulo).trim();
+        return {
+          id: -(stamp + idx),
+          name,
+          text: buildManualMedText({
+            name,
+            presentation: "",
+            dose: it.dose ?? "",
+            posology: [it.via, it.frequencia].filter(Boolean).join(" — "),
+            duration: it.duracao ?? "",
+            notes: it.observacoes ?? "",
+          }),
+        };
+      });
+    const newExams = items.filter((it) => it.kind === "exame");
+    if (newMeds.length > 0) setMeds([...selected, ...newMeds]);
+    if (newExams.length > 0) {
+      setExames((prev) => ({
+        ...prev,
+        itens: [
+          ...prev.itens,
+          ...newExams.map((it, idx) => ({ id: `reuse-${stamp}-${idx}`, tipo: "laboratorial" as const, nome: it.titulo })),
+        ],
+      }));
+    }
+    const ignored = items.length - newMeds.length - newExams.length;
+    toast.success(`${newMeds.length + newExams.length} item(ns) reaproveitado(s) — revise antes de emitir`);
+    if (ignored > 0) toast.info(`${ignored} item(ns) de outros tipos não foram reaproveitados.`);
+  };
+
+  /** Aplica os itens extraídos (e revisados pelo médico) aos formulários do atendimento. */
+  const handleSmartInputConfirm = (items: ExtractedItem[]) => {
+    const stamp = Date.now();
+    const newMeds: { id: number; name: string; text: string }[] = [];
+    let applied = 0;
+    const skipped: string[] = [];
+    items.forEach((it, idx) => {
+      switch (it.tipo) {
+        case "medicamento": {
+          const name = (it.principio_ativo ?? it.nome_comercial ?? it.texto_original).trim();
+          newMeds.push({
+            id: -(stamp + idx),
+            name,
+            text: buildManualMedText({
+              name,
+              presentation: "",
+              dose: [it.dose, it.unidade].filter(Boolean).join(" "),
+              posology: [it.via, it.frequencia].filter(Boolean).join(" — "),
+              duration: it.duracao ?? "",
+              notes: it.observacoes ?? "",
+            }),
+          });
+          applied++;
+          break;
+        }
+        case "exame":
+          setExames((prev) => ({
+            ...prev,
+            itens: [...prev.itens, { id: `smart-${stamp}-${idx}`, tipo: "laboratorial", nome: it.nome }],
+          }));
+          applied++;
+          break;
+        case "orientacao":
+          setOrientacoes((prev) => ({
+            ...prev,
+            cuidadosGerais: [prev.cuidadosGerais, it.texto].filter(Boolean).join("\n"),
+            sinaisAlarme: it.sinais_alerta ? Array.from(new Set([...prev.sinaisAlarme, it.sinais_alerta])) : prev.sinaisAlarme,
+            retornoCondicao: prev.retornoCondicao || it.retorno || "",
+          }));
+          applied++;
+          break;
+        case "documento":
+          if (it.subtipo === "atestado") {
+            setAtestado((a) => ({ ...a, days: it.duracao_dias ? String(it.duracao_dias) : a.days, reason: a.reason || it.conteudo }));
+          } else if (it.subtipo === "encaminhamento") {
+            setEncaminhamento((e) => ({ ...e, resumoClinico: [e.resumoClinico, it.conteudo].filter(Boolean).join("\n") }));
+          } else if (it.subtipo === "declaracao") {
+            setDeclaracao((d) => ({ ...d, finalidade: d.finalidade || it.conteudo }));
+          } else if (it.subtipo === "solicitacao") {
+            setProcedimento((p) => ({ ...p, justificativa: [p.justificativa, it.conteudo].filter(Boolean).join("\n") }));
+          } else {
+            setRelatorio((r) => ({ ...r, conteudo: [r.conteudo, it.conteudo].filter(Boolean).join("\n") }));
+          }
+          applied++;
+          break;
+        default:
+          skipped.push(it.texto_original);
+      }
+    });
+    if (newMeds.length > 0) setMeds([...selected, ...newMeds]);
+    if (applied > 0) toast.success(`${applied} ${applied === 1 ? "item aplicado" : "itens aplicados"} — revise antes de emitir`);
+    if (skipped.length > 0) toast.info(`${skipped.length} item(ns) sem destino no atendimento foram ignorados.`);
+  };
 
   const loadPathologyMeds = (pathology: Pathology) => {
     const meds = pathology.meds
@@ -516,9 +631,9 @@ const Dashboard = () => {
     [selected, allMedications],
   );
 
-  /** Registra a receita emitida para revisão na tela de Prescrições. */
+  /** Registra a receita emitida para revisão na tela de Prescrições. Falha visível, sem bloquear a emissão. */
   const recordPrescription = (group: RegulatoryGroup) => {
-    void savePrescriptionRecord({
+    savePrescriptionRecord({
       patientName,
       environment,
       conditionName: activePathology?.name ?? activeSyndrome?.nome ?? null,
@@ -526,19 +641,60 @@ const Dashboard = () => {
       cid: activePathology?.cid ?? activeSyndrome?.cid ?? null,
       regulatoryLabel: group.rules.label,
       items: group.items.map((it) => ({ nome: it.selected.name, posologia: it.selected.text })),
+    }).catch((err) => {
+      console.error("Falha ao registrar receita em prescricoes_historico", err);
+      toast.error("A receita não foi registrada no histórico de prescrições.");
     });
   };
 
+  /**
+   * Registra o documento em documentos_gerados (+ log + auditoria).
+   * Retorna o id, ou null após avisar o usuário: nesse caso o documento NÃO deve sair.
+   */
+  const persistOrWarn = async (
+    snapshot: NewEmissionRecord,
+    acao: "imprimiu" | "gerou_pdf",
+    family?: ReceiptFamily | null,
+  ): Promise<string | null> => {
+    try {
+      const documentoId = await persistEmission({ snapshot, family, acao });
+      setPrintedDocumentoId(documentoId);
+      return documentoId;
+    } catch (err) {
+      console.error("Falha ao registrar documento emitido", err);
+      toast.error("Documento não registrado — emissão cancelada", {
+        description: "Verifique a conexão e tente novamente. Nenhum documento é emitido sem registro.",
+      });
+      return null;
+    }
+  };
+
+  /** Anexa ao documento registrado o PDF gerado pelo botão "Salvar PDF" do modal de impressão. */
+  const handlePrintAreaPdf = async (pdf: Blob): Promise<void> => {
+    const documentoId = replayRecord ? replayRecord.documentoId : printedDocumentoId;
+    if (!documentoId) return;
+    try {
+      await attachDocumentPdf(documentoId, pdf);
+    } catch (err) {
+      console.error("Falha ao anexar PDF ao documento", err);
+      toast.warning("PDF salvo, mas não foi anexado ao link público do documento.");
+    }
+  };
+
+  const groupSnapshot = (group: RegulatoryGroup) =>
+    buildSnapshot({
+      regulatoryLabel: group.rules.label,
+      selectedFilter: group.items.map((it) => it.selected.id),
+    });
+
   /** Imprime apenas um grupo regulatório (filtra SelectedMeds). */
-  const handlePrintGroup = (group: RegulatoryGroup) => {
+  const handlePrintGroup = async (group: RegulatoryGroup): Promise<void> => {
+    const snapshot = groupSnapshot(group);
+    const documentoId = await persistOrWarn(snapshot, "imprimiu", group.family);
+    if (!documentoId) return;
     setActiveGroup(group);
     setPrintOpen(true);
-    emissionHistory.add(
-      buildSnapshot({
-        regulatoryLabel: group.rules.label,
-        selectedFilter: group.items.map((it) => it.selected.id),
-      }),
-    );
+    emissionHistory.add({ ...snapshot, documentoId });
     recordPrescription(group);
     setTimeout(() => window.print(), 300);
   };
@@ -559,25 +715,23 @@ const Dashboard = () => {
       const sufix = group.subTotal && group.subTotal > 1 ? `_${group.subIndex}de${group.subTotal}` : "";
       const filename = `Receita_${group.rules.label.replace(/\s+/g, "_")}${sufix}_${(patientName || "paciente").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
       const isLandscape = group.family === "controle-especial" || group.family === "antimicrobiano";
-      await html2pdf()
-        .set({
-          margin: isLandscape ? 5 : 10,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-          jsPDF: { unit: "mm", format: "a4", orientation: isLandscape ? "landscape" : "portrait" },
-          pagebreak: { mode: ["css", "legacy"] },
-        })
+      const pdf: Blob = await html2pdf()
+        .set(buildPdfOptions(filename, isLandscape))
         .from(node)
-        .save();
-      emissionHistory.add(
-        buildSnapshot({
-          regulatoryLabel: group.rules.label,
-          selectedFilter: group.items.map((it) => it.selected.id),
-        }),
-      );
+        .outputPdf("blob");
+      const snapshot = groupSnapshot(group);
+      const documentoId = await persistOrWarn(snapshot, "gerou_pdf", group.family);
+      if (!documentoId) return;
+      downloadBlob(pdf, filename);
+      emissionHistory.add({ ...snapshot, documentoId });
       recordPrescription(group);
-      toast.success(`PDF "${group.rules.label}" salvo`);
+      try {
+        await attachDocumentPdf(documentoId, pdf);
+        toast.success(`PDF "${group.rules.label}" salvo e registrado`);
+      } catch (err) {
+        console.error("Falha ao anexar PDF ao documento", err);
+        toast.warning("Documento registrado, mas o PDF não foi anexado ao link público.");
+      }
     } catch (err) {
       console.error(err);
       toast.error("Falha ao gerar PDF");
@@ -626,7 +780,7 @@ const Dashboard = () => {
   };
 
   // Print with validation + clinical safety gate
-  const handleEmit = () => {
+  const handleEmit = async (): Promise<void> => {
     // Camada 1: validação estrutural
     if (!validation.canEmit) {
       toast.error("Não é possível emitir", {
@@ -658,10 +812,20 @@ const Dashboard = () => {
       action,
       patientHash: hashPatient(patientName),
     });
-    // Persistir no histórico de emissões — apenas para documentos não-receita
-    // (receita é registrada por grupo regulatório em handlePrintGroup/handleDownloadGroup)
-    if (action !== "receita") {
-      emissionHistory.add(buildSnapshot());
+    // Registro obrigatório antes de imprimir: sem gravação no banco, o documento não sai.
+    if (action === "receita" && regulatoryResult.groups.length > 0) {
+      for (const group of regulatoryResult.groups) {
+        const snapshot = groupSnapshot(group);
+        const documentoId = await persistOrWarn(snapshot, "imprimiu", group.family);
+        if (!documentoId) return;
+        emissionHistory.add({ ...snapshot, documentoId });
+        recordPrescription(group);
+      }
+    } else {
+      const snapshot = buildSnapshot();
+      const documentoId = await persistOrWarn(snapshot, "imprimiu");
+      if (!documentoId) return;
+      emissionHistory.add({ ...snapshot, documentoId });
     }
     handlePrint();
   };
@@ -677,7 +841,20 @@ const Dashboard = () => {
     setHistoryOpen(false);
   };
 
+  const logReplay = (record: EmissionRecord, acao: "imprimiu" | "baixou") => {
+    if (!record.documentoId) return;
+    logDocumentAction({
+      id_documento: record.documentoId,
+      tipo_documento: resolveDocumentoTipo(record.action, null),
+      acao,
+    }).catch((err) => {
+      console.error("Falha ao registrar reabertura do documento", err);
+      toast.error("A ação não foi registrada no log de documentos.");
+    });
+  };
+
   const handleHistoryPrint = (record: EmissionRecord) => {
+    logReplay(record, "imprimiu");
     setReplayRecord(record);
     setActiveGroup(null);
     setPrintOpen(true);
@@ -703,18 +880,23 @@ const Dashboard = () => {
         ? `Receita_${record.regulatoryLabel.replace(/\s+/g, "_")}`
         : record.documentTitle.replace(/\s+/g, "_");
       const filename = `${baseTitle}_${(record.patientName || "paciente").replace(/\s+/g, "_")}_${record.emittedAt.slice(0, 10)}.pdf`;
-      await html2pdf()
-        .set({
-          margin: isLandscape ? 5 : 10,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-          jsPDF: { unit: "mm", format: "a4", orientation: isLandscape ? "landscape" : "portrait" },
-          pagebreak: { mode: ["css", "legacy"] },
-        })
+      const pdf: Blob = await html2pdf()
+        .set(buildPdfOptions(filename, isLandscape))
         .from(node)
-        .save();
-      toast.success("PDF salvo");
+        .outputPdf("blob");
+      downloadBlob(pdf, filename);
+      logReplay(record, "baixou");
+      if (record.documentoId) {
+        try {
+          await attachDocumentPdf(record.documentoId, pdf);
+          toast.success("PDF salvo e vinculado ao documento");
+        } catch (err) {
+          console.error("Falha ao anexar PDF ao documento", err);
+          toast.warning("PDF salvo, mas não foi anexado ao link público do documento.");
+        }
+      } else {
+        toast.success("PDF salvo");
+      }
     } catch (err) {
       console.error(err);
       toast.error("Falha ao gerar PDF");
@@ -1150,6 +1332,7 @@ const Dashboard = () => {
                       }}
                     />
                     <ClinicalCalculatorsPanel
+                      atendimentoId={atendimentoId.current}
                       pathologyName={activePathology?.name ?? activeSyndrome?.nome ?? null}
                       environment={environment}
                       profiles={activeProfiles}
@@ -1233,6 +1416,18 @@ const Dashboard = () => {
               >
                 {renderEditor()}
               </BuilderShell>
+              {action === "receita" && (
+                <AssistiveDecisionSupport
+                  selected={selected}
+                  patientName={patientName}
+                  isPediatric={isPediatric}
+                  isPregnant={isPregnant}
+                  ageInYears={patient.ageInYears}
+                  weightKg={patient.weightKg}
+                  allergies={patient.allergies}
+                  onAddReuseItems={handleReuseItems}
+                />
+              )}
             </section>
 
             {/* Preview column — desktop only */}
@@ -1255,6 +1450,24 @@ const Dashboard = () => {
             {draftCount} documentos em rascunho
           </div>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSmartOpen(true)}
+          className="w-full mb-2"
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Entrada inteligente (texto ou foto)
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setScoresOpen(true)}
+          className="w-full mb-2"
+        >
+          <Calculator className="h-4 w-4 mr-2" />
+          Escores clínicos (todos)
+        </Button>
         <Button
           onClick={() => setReviewOpen(true)}
           className="w-full h-12 bg-canon-blue text-primary-foreground hover:bg-canon-blue/90 shadow-paper"
@@ -1297,6 +1510,7 @@ const Dashboard = () => {
       <PrintArea
         open={printOpen}
         onClose={() => { setPrintOpen(false); setActiveGroup(null); setReplayRecord(null); }}
+        onPdfGenerated={handlePrintAreaPdf}
         patientName={replayRecord?.patientName ?? patientName}
         isPediatric={replayRecord?.isPediatric ?? isPediatric}
         isPregnant={replayRecord?.isPregnant ?? isPregnant}
@@ -1358,6 +1572,33 @@ const Dashboard = () => {
         alert={pendingJustifyAlert}
         onConfirm={handleConfirmJustify}
         onCancel={() => setPendingJustifyAlert(null)}
+      />
+
+      <ScoresDialog
+        open={scoresOpen}
+        onOpenChange={setScoresOpen}
+        atendimentoId={atendimentoId.current}
+        ageInYears={patient.ageInYears ?? null}
+        onUseResult={(title, text) => {
+          setMeds([...selected, { id: -Date.now(), name: title, text: `${title}
+${text}` }]);
+          toast.success(`${title} adicionado ao documento`);
+        }}
+      />
+
+      <SmartInputDialog
+        open={smartOpen}
+        onOpenChange={(open) => {
+          setSmartOpen(open);
+          if (!open && searchParams.has("smart")) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("smart");
+            setSearchParams(next, { replace: true });
+          }
+        }}
+        tipoEntrada="texto_livre"
+        contexto={activePathology?.name ?? activeSyndrome?.nome ?? undefined}
+        onConfirm={handleSmartInputConfirm}
       />
 
       <ManualMedicationDialog

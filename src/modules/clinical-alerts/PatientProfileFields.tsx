@@ -30,7 +30,7 @@ export default function PatientProfileFields({ profile, onSave }: Props) {
           <Label>Alergias (princípios ativos, separados por vírgula)</Label>
           <Input
             value={p.alergias_medicamentosas.map((a) => a.principio_ativo).filter(Boolean).join(", ")}
-            onChange={(e) => set("alergias_medicamentosas", csv(e.target.value).map((pa) => ({ principio_ativo: pa, tipo_registro: "alergia_confirmada", gravidade: "desconhecida" })))}
+            onChange={(e) => set("alergias_medicamentosas", csv(e.target.value).map((pa) => ({ principio_ativo: pa, tipo_registro: "alergia_confirmada" as const, gravidade: "desconhecida" as const })))}
           />
         </div>
         <div>

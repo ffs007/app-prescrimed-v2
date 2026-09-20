@@ -192,7 +192,7 @@ export default function IVSafetyReviewDialog({
         justificativa: j,
       })),
     );
-    await supabase.from("historico_revisao_seguranca_iv").insert({
+    const { error: historyError } = await supabase.from("historico_revisao_seguranca_iv").insert({
       usuario_responsavel: session.user.id,
       id_prescricao: idPrescricao ?? null,
       id_paciente: idPaciente ?? null,
@@ -206,6 +206,7 @@ export default function IVSafetyReviewDialog({
       orientacoes_copiadas: copied,
       status_finalizacao: status,
     });
+    if (historyError) throw historyError;
   };
 
   const handleFinalize = async () => {
