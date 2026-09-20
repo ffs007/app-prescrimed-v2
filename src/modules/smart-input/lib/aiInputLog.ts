@@ -1,5 +1,6 @@
 // Etapa 19 — Wrappers de log para entrada inteligente.
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 import type {
   EntradaTipo,
   EntradaOrigem,
@@ -67,7 +68,7 @@ export interface ItemEditLogPayload {
 export async function logItemEdit(p: ItemEditLogPayload) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-  await supabase.from("log_edicoes_itens_ia").insert({
+  const { error } = await supabase.from("log_edicoes_itens_ia").insert({
     id_entrada: p.id_entrada,
     tipo_item: p.tipo_item,
     texto_original_item: p.texto_original_item,
@@ -76,6 +77,7 @@ export async function logItemEdit(p: ItemEditLogPayload) {
     valor_final_usuario: p.valor_final_usuario,
     usuario_responsavel: user.id,
   });
+  if (error) reportError("aiInputLog.logItemEdit", error);
 }
 
 export async function suggestLearningTerm(p: {
@@ -86,11 +88,12 @@ export async function suggestLearningTerm(p: {
 }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-  await supabase.from("termos_aprendizado_ia").insert({
+  const { error } = await supabase.from("termos_aprendizado_ia").insert({
     termo_original: p.termo_original,
     termo_corrigido: p.termo_corrigido,
     principio_ativo_relacionado: p.principio_ativo_relacionado ?? null,
     contexto: p.contexto ?? null,
     sugerido_por: user.id,
   });
+  if (error) reportError("aiInputLog.suggestLearningTerm", error);
 }

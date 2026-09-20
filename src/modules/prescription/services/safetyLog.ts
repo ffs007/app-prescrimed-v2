@@ -1,5 +1,6 @@
 import type { ClinicalAlert } from "./clinicalSafety";
 import type { DocumentAction } from "../components/ActionGrid";
+import { reportError } from "@/lib/reportError";
 
 /**
  * Log de segurança da sessão — persistido em localStorage.
@@ -37,7 +38,8 @@ const safeRead = (): SafetyLogEntry[] => {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (error) {
+    reportError("safetyLog.read", error);
     return [];
   }
 };
@@ -46,8 +48,8 @@ const safeWrite = (entries: SafetyLogEntry[]) => {
   try {
     const trimmed = entries.slice(-MAX_ENTRIES);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-  } catch {
-    // localStorage cheio ou indisponível: silencioso (não pode quebrar fluxo clínico)
+  } catch (error) {
+    reportError("safetyLog.write", error, "Não foi possível salvar o registro local de segurança clínica (armazenamento cheio ou bloqueado).");
   }
 };
 
@@ -63,8 +65,8 @@ export const safetyLog = {
   clear() {
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
+    } catch (error) {
+      reportError("modules/prescription/services/safetyLog", error);
     }
   },
 };

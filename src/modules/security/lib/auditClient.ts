@@ -4,6 +4,8 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { AuditSeverity } from "./auditActions";
+import { reportError } from "@/lib/reportError";
+import { sanitizeAuditDetails } from "./sanitizeAudit";
 
 let cachedIp: string | null | undefined;
 
@@ -13,7 +15,8 @@ async function publicIp(): Promise<string | null> {
     const res = await fetch("https://api.ipify.org?format=json", { cache: "force-cache" });
     const json = (await res.json()) as { ip?: string };
     cachedIp = json.ip ?? null;
-  } catch {
+  } catch (error) {
+    reportError("auditClient.publicIp", error);
     cachedIp = null;
   }
   return cachedIp ?? null;
@@ -33,7 +36,7 @@ export async function recordCriticalEvent(event: CriticalEvent): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const ip = await publicIp();
-    await supabase.from("audit_log_critico").insert({
+    const { error: writeError } = await supabase.from("audit_log_critico").insert({
       user_id: user.id,
       user_email: user.email ?? null,
       acao: event.acao,
@@ -43,9 +46,10 @@ export async function recordCriticalEvent(event: CriticalEvent): Promise<void> {
       severidade: event.severidade ?? "info",
       ip,
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 300) : null,
-      detalhes: (event.detalhes ?? {}) as never,
+      detalhes: sanitizeAuditDetails(event.detalhes ?? {}) as never,
     });
-  } catch (e) {
-    console.warn("Falha ao registrar evento de auditoria", e);
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("auditClient.recordCriticalEvent", error, "Não foi possível registrar esta ação na trilha de auditoria.");
   }
 }

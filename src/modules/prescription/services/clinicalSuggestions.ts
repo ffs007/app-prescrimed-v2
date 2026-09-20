@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Medication } from "@/types/prescription";
 import type { ClinicalEnvironment } from "../types/prescription";
 import { stableNumericId } from "../hooks/useMedications";
+import { reportError } from "@/lib/reportError";
 
 /* ============================ Tipos ============================ */
 
@@ -564,7 +565,7 @@ export async function logSuggestionGap(input: {
   try {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth?.user) return;
-    await supabase.from("auditoria_sugestoes_lacunas" as any).insert({
+    const { error: writeError } = await supabase.from("auditoria_sugestoes_lacunas" as any).insert({
       user_id: auth.user.id,
       tipo: input.tipo,
       condicao: input.condicao ?? null,
@@ -573,8 +574,9 @@ export async function logSuggestionGap(input: {
       termo_buscado: input.termo ?? null,
       detalhe: input.detalhe ?? null,
     });
-  } catch {
-    /* auditoria nunca interrompe o fluxo clínico */
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("clinicalSuggestions.auditoria", error, "Não foi possível registrar a auditoria das sugestões clínicas.");
   }
 }
 
