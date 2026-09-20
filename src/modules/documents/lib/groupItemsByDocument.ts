@@ -24,6 +24,10 @@ const TITULOS: Record<DocumentoTipo, string> = {
   anexo_tecnico_iv: "Anexo Técnico — Diluição e Administração IV",
   plano_terapeutico: "Plano Terapêutico",
   resumo_atendimento: "Resumo do Atendimento",
+  aih: "Laudo de Internação (AIH)",
+  apac: "Laudo APAC",
+  notificacao_compulsoria: "Notificação Compulsória",
+  procedimento: "Solicitação de Procedimento",
 };
 
 export function groupItemsByDocument(

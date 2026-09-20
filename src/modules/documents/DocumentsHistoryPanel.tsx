@@ -15,6 +15,7 @@ import { printHtml, downloadHtml } from "./lib/pdfPrint";
 import { logDocumentAction } from "./lib/documentSave";
 import CancelDocumentDialog from "./CancelDocumentDialog";
 import GenerateLinkDialog from "@/modules/patient-link/GenerateLinkDialog";
+import { reportError } from "@/lib/reportError";
 
 const statusBadge = (s: string) => {
   switch (s) {
@@ -62,13 +63,18 @@ export default function DocumentsHistoryPanel({
         (d.conteudo_resumido ?? "").replace(/</g, "&lt;")
       }</pre></body></html>`;
     printHtml(html);
-    logDocumentAction({ id_documento: d.id, tipo_documento: d.tipo, acao: "imprimiu" });
-    supabase.from("documentos_gerados").update({ status: "impresso" }).eq("id", d.id).then(load);
+    logDocumentAction({ id_documento: d.id, tipo_documento: d.tipo, acao: "imprimiu" })
+      .catch((error) => reportError("DocumentsHistoryPanel.log", error, "A impressão não foi registrada no log de documentos."));
+    supabase.from("documentos_gerados").update({ status: "impresso" }).eq("id", d.id).then(({ error }) => {
+      if (error) reportError("DocumentsHistoryPanel.status", error, "Não foi possível atualizar o status do documento.");
+      load();
+    });
   };
 
   const downloadJson = (d: DocumentoGerado) => {
     downloadHtml(JSON.stringify(d.conteudo_json, null, 2), `${d.tipo}-${d.id}.json`);
-    logDocumentAction({ id_documento: d.id, tipo_documento: d.tipo, acao: "baixou" });
+    logDocumentAction({ id_documento: d.id, tipo_documento: d.tipo, acao: "baixou" })
+      .catch((error) => reportError("DocumentsHistoryPanel.log", error, "O download não foi registrado no log de documentos."));
   };
 
   return (

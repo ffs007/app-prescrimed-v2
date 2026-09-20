@@ -520,6 +520,10 @@ const RENDERERS: Record<DocumentoTipo, (a: RenderArgs) => RenderedDocument> = {
   anexo_tecnico_iv: renderAnexoIV,
   plano_terapeutico: renderPlanoTerapeutico,
   resumo_atendimento: renderResumoAtendimento,
+  aih: (a) => renderEmpty(a, "aih", "Laudo de Internação (AIH)"),
+  apac: (a) => renderEmpty(a, "apac", "Laudo APAC"),
+  notificacao_compulsoria: (a) => renderEmpty(a, "notificacao_compulsoria", "Notificação Compulsória"),
+  procedimento: (a) => renderEmpty(a, "procedimento", "Solicitação de Procedimento"),
 };
 
 export function renderDocument(args: RenderArgs): RenderedDocument {

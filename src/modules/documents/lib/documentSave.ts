@@ -49,7 +49,7 @@ export async function logDocumentAction(args: {
 }): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-  await supabase.from("log_documentos_clinicos").insert({
+  const { error } = await supabase.from("log_documentos_clinicos").insert({
     id_documento: args.id_documento ?? null,
     tipo_documento: args.tipo_documento ?? null,
     acao: args.acao,
@@ -59,12 +59,14 @@ export async function logDocumentAction(args: {
     destino_envio: args.destino_envio ?? null,
     motivo_cancelamento: args.motivo_cancelamento ?? null,
   });
+  if (error) throw error;
 }
 
 export async function cancelDocument(id: string, motivo: string): Promise<void> {
-  await supabase.from("documentos_gerados")
+  const { error } = await supabase.from("documentos_gerados")
     .update({ status: "cancelado", motivo_cancelamento: motivo })
     .eq("id", id);
+  if (error) throw error;
   await logDocumentAction({ id_documento: id, acao: "cancelou", motivo_cancelamento: motivo });
   await recordCriticalEvent({
     acao: AUDIT_ACTIONS.DOCUMENTO_ALTERADO,

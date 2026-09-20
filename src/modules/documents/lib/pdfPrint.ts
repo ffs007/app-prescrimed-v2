@@ -27,6 +27,32 @@ export function printHtml(html: string): void {
   };
 }
 
+/**
+ * Opções padrão do html2pdf (A4). `pagebreak` funciona em runtime, mas falta na tipagem do pacote;
+ * por isso o objeto é montado em variável (sem checagem de propriedade excedente).
+ */
+export function buildPdfOptions(filename: string, landscape: boolean) {
+  const options = {
+    margin: landscape ? 5 : 10,
+    filename,
+    image: { type: "jpeg" as const, quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+    jsPDF: { unit: "mm", format: "a4", orientation: (landscape ? "landscape" : "portrait") as "landscape" | "portrait" },
+    pagebreak: { mode: ["css", "legacy"] },
+  };
+  return options;
+}
+
+/** Dispara o download de um Blob já gerado no navegador. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Faz download do HTML como arquivo .html (fallback simples ao PDF). */
 export function downloadHtml(html: string, filename: string): void {
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });

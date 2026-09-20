@@ -25,7 +25,8 @@ import { toast } from "@/hooks/use-toast";
 import { printHtml, downloadHtml } from "@/modules/documents/lib/pdfPrint";
 import { recordCriticalEvent } from "@/modules/security/lib/auditClient";
 import { AUDIT_ACTIONS } from "@/modules/security/lib/auditActions";
-import { AIH_SECTIONS, buildAihHtml, displayValue, type AihField } from "./lib/aihSpec";
+import { persistFormDocument } from "@/modules/documents/lib/persistEmission";
+import { AIH_SECTIONS, aihToText, buildAihHtml, displayValue, type AihField } from "./lib/aihSpec";
 import { useAihWorkbench } from "./hooks/useAihWorkbench";
 import {
   loadAihDefaults,
@@ -80,8 +81,25 @@ const AihWorkbench = () => {
     toast({ title: "Dados do serviço e do médico preenchidos" });
   };
 
-  const print = () => {
-    printHtml(buildAihHtml(wb.sections, wb.data));
+  /** Registra a AIH em documentos_gerados antes de deixá-la sair. Sem registro, não imprime nem baixa. */
+  const registerEmission = async (acao: "imprimiu" | "baixou"): Promise<boolean> => {
+    try {
+      await persistFormDocument({
+        tipo: "aih",
+        titulo: `AIH — ${String(wb.data.pacienteNome || "paciente")}`,
+        resumo: aihToText(wb.sections, wb.data),
+        campos: wb.data,
+        acao,
+      });
+    } catch (err) {
+      console.error("[AihWorkbench.registrarEmissao]", err);
+      toast({
+        title: "AIH não registrada — emissão cancelada",
+        description: "Verifique a conexão e tente novamente. Nenhum documento é emitido sem registro.",
+        variant: "destructive",
+      });
+      return false;
+    }
     void recordCriticalEvent({
       acao: AUDIT_ACTIONS.INTERNACAO_REGISTRADA,
       modulo: "internacao",
@@ -89,12 +107,20 @@ const AihWorkbench = () => {
       entidadeId: (wb.data["numero_aih"] as string) || null,
       severidade: "alerta",
     });
+    return true;
   };
-  const download = () =>
+
+  const print = async () => {
+    if (!(await registerEmission("imprimiu"))) return;
+    printHtml(buildAihHtml(wb.sections, wb.data));
+  };
+  const download = async () => {
+    if (!(await registerEmission("baixou"))) return;
     downloadHtml(
       buildAihHtml(wb.sections, wb.data),
       `AIH-${String(wb.data.pacienteNome || "paciente").replace(/\s+/g, "-")}.html`,
     );
+  };
 
   const addField = () => {
     if (!newFieldSection || !newFieldLabel.trim()) return;

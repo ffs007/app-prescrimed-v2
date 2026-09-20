@@ -42,6 +42,7 @@ import {
 import { useIVMedicationsForList } from "@/modules/iv-dilution/useIVMedicationsForList";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logIVView } from "@/modules/iv-dilution/lib/ivViewLog";
+import { buildPdfOptions, downloadBlob } from "@/modules/documents/lib/pdfPrint";
 
 const cn = (...xs: Array<string | false | null | undefined>) =>
   xs.filter(Boolean).join(" ");
@@ -82,6 +83,8 @@ interface Props {
    * específico no PDF (ex: "Receita - Controle Especial").
    */
   titleOverride?: string;
+  /** Chamado com o PDF gerado pelo botão "Salvar PDF" (ex.: para anexá-lo ao documento registrado). */
+  onPdfGenerated?: (pdf: Blob) => void | Promise<void>;
 }
 
 const DOC_TITLES: Record<DocumentAction, string> = {
@@ -104,7 +107,7 @@ const PrintArea = ({
   declaracao, relatorio, orientacoes,
   aih = EMPTY_AIH, apac = EMPTY_APAC, notificacao = EMPTY_NOTIFICACAO,
   clinicInfo, signatureConfig,
-  selectedFilter, titleOverride,
+  selectedFilter, titleOverride, onPdfGenerated,
 }: Props) => {
   const { branding } = useDocumentBranding();
   const brandingData = useMemo(
@@ -193,21 +196,12 @@ const PrintArea = ({
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       const filename = `${docTitle.replace(/\s+/g, "_")}_${(patientName || "paciente").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      await html2pdf()
-        .set({
-          margin: useLandscape ? 5 : 10,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-          jsPDF: {
-            unit: "mm",
-            format: "a4",
-            orientation: useLandscape ? "landscape" : "portrait",
-          },
-          pagebreak: { mode: ["css", "legacy"] },
-        })
+      const pdf: Blob = await html2pdf()
+        .set(buildPdfOptions(filename, useLandscape))
         .from(node)
-        .save();
+        .outputPdf("blob");
+      downloadBlob(pdf, filename);
+      await onPdfGenerated?.(pdf);
       toast.success("PDF salvo com sucesso");
     } catch (err) {
       console.error(err);
