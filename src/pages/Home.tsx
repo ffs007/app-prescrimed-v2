@@ -1,25 +1,29 @@
 import { Link } from "react-router-dom";
-import { Plus, Sparkles, Users, Mic, History as HistoryIcon, FileText, AlertTriangle, Star } from "lucide-react";
+import { Plus, Sparkles, Mic, History as HistoryIcon, FileText, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 
 export default function Home() {
-  const [counts, setCounts] = useState({ presc: 0, docs: 0, alerts: 0, favs: 0 });
+  const [counts, setCounts] = useState({ presc: 0, docs: 0, favs: 0 });
 
   useEffect(() => {
     (async () => {
       const today = new Date(); today.setHours(0,0,0,0);
-      const [docsRes] = await Promise.all([
-        supabase.from("documentos_gerados").select("*", { count: "exact", head: true })
-          .gte("data_hora", today.toISOString()),
+      const since = today.toISOString();
+      const [prescRes, docsRes, favsRes] = await Promise.all([
+        supabase.from("prescricoes_historico").select("*", { count: "exact", head: true }).gte("criado_em", since),
+        supabase.from("documentos_gerados").select("*", { count: "exact", head: true }).gte("data_hora", since),
+        supabase.from("patologia_personalizacao").select("*", { count: "exact", head: true }).eq("favorito", true),
       ]);
-      if (docsRes.error) {
-        console.error("[Home] falha ao carregar contadores do dashboard:", docsRes.error);
+      const failed = [prescRes, docsRes, favsRes].find((r) => r.error);
+      if (failed?.error) {
+        reportError("Home.contadores", failed.error);
         return;
       }
-      setCounts((c) => ({ ...c, docs: docsRes.count ?? 0 }));
+      setCounts({ presc: prescRes.count ?? 0, docs: docsRes.count ?? 0, favs: favsRes.count ?? 0 });
     })();
   }, []);
 
@@ -38,17 +42,15 @@ export default function Home() {
         </Link>
       </Button>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <SecondaryAction to="/app/modelos" icon={Sparkles} label="Usar modelo rápido" />
-        <SecondaryAction to="/app/pacientes" icon={Users} label="Buscar paciente" />
         <SecondaryAction to="/app/prescricao/nova?smart=1" icon={Mic} label="Entrada por voz/texto" />
         <SecondaryAction to="/app/historico" icon={HistoryIcon} label="Histórico recente" />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <MiniCard icon={FileText} label="Prescrições hoje" value={counts.presc} />
         <MiniCard icon={FileText} label="Documentos gerados" value={counts.docs} />
-        <MiniCard icon={AlertTriangle} label="Alertas revisados" value={counts.alerts} />
         <MiniCard icon={Star} label="Modelos favoritos" value={counts.favs} />
       </div>
     </div>

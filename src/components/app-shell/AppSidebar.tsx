@@ -5,6 +5,7 @@ import {
   BarChart3,
   BedDouble,
   BookOpen,
+  Calculator,
   ChevronDown,
   ClipboardCheck,
   FilePlus2,
@@ -20,7 +21,6 @@ import {
   Sparkles,
   Stethoscope,
   Upload,
-  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -49,7 +49,6 @@ const groups: Array<{ label: string; items: NavigationItem[] }> = [
     items: [
       { title: "Início", url: "/app", icon: Home, end: true },
       { title: "Nova Prescrição", url: "/app/prescricao/nova", icon: FilePlus2 },
-      { title: "Pacientes", url: "/app/pacientes", icon: Users },
     ],
   },
   {
@@ -69,6 +68,7 @@ const groups: Array<{ label: string; items: NavigationItem[] }> = [
       { title: "Minhas Patologias", url: "/app/patologias", icon: Stethoscope },
       { title: "Modelos Rápidos", url: "/app/modelos", icon: Sparkles },
       { title: "Protocolos & Escores", url: "/app/protocolos-escores", icon: BookOpen },
+      { title: "Calculadoras de escores", url: "/app/escores", icon: Calculator },
     ],
   },
   {

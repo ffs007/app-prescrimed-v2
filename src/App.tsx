@@ -1,58 +1,59 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import Login from "./pages/Login.tsx";
-import Cadastro from "./pages/Cadastro.tsx";
-import RecuperarSenha from "./pages/RecuperarSenha.tsx";
-import RedefinirSenha from "./pages/RedefinirSenha.tsx";
-import Home from "./pages/Home.tsx";
-import Patients from "./pages/Patients.tsx";
-import QuickTemplates from "./pages/QuickTemplates.tsx";
-import HistoryPage from "./pages/HistoryPage.tsx";
-import PrescricoesPage from "./pages/PrescricoesPage";
-import DocumentsPage from "./pages/DocumentsPage.tsx";
-import MedicationsBrowse from "./pages/MedicationsBrowse.tsx";
-import NotFound from "./pages/NotFound.tsx";
+const Index = lazy(() => import("./pages/Index.tsx"));
+const Login = lazy(() => import("./pages/Login.tsx"));
+const Cadastro = lazy(() => import("./pages/Cadastro.tsx"));
+const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha.tsx"));
+const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha.tsx"));
+const Home = lazy(() => import("./pages/Home.tsx"));
+const QuickTemplates = lazy(() => import("./pages/QuickTemplates.tsx"));
+const HistoryPage = lazy(() => import("./pages/HistoryPage.tsx"));
+const PrescricoesPage = lazy(() => import("./pages/PrescricoesPage"));
+const DocumentsPage = lazy(() => import("./pages/DocumentsPage.tsx"));
+const MedicationsBrowse = lazy(() => import("./pages/MedicationsBrowse.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 import ScrollToTop from "./components/ScrollToTop";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import AppShell from "./components/app-shell/AppShell";
-import IVDilutionAdminPage from "./modules/iv-dilution/IVDilutionAdminPage";
-import NewPrescriptionPage from "./modules/prescription/mvp/NewPrescriptionPage";
-import RequisitosPage from "./pages/RequisitosPage";
-import SegurancaPage from "./pages/SegurancaPage";
-import IndicatorsPage from "./pages/IndicatorsPage";
-import InternacoesPage from "./pages/InternacoesPage";
-import NotificacoesPage from "./pages/NotificacoesPage";
-import ClinicalTestsPage from "./pages/ClinicalTestsPage";
-import PublicDocumentPage from "./pages/PublicDocumentPage";
-import ImportarLotePage from "./pages/ImportarLotePage";
-import CuradoriaPage from "./pages/CuradoriaPage";
-import VinculoExamesPage from "./pages/VinculoExamesPage";
-import VinculoMedicamentosPage from "./pages/VinculoMedicamentosPage";
-import ChecklistProtocoloPage from "./pages/ChecklistProtocoloPage";
-import RevisaoDosesPage from "./pages/RevisaoDosesPage";
-import EscoresTraumaPage from "./pages/EscoresTraumaPage";
-import ProtocoloPSPage from "./pages/ProtocoloPSPage";
-import AuditoriaProtocolosPage from "./pages/AuditoriaProtocolosPage";
-import EtapasProtocoloPage from "./pages/EtapasProtocoloPage";
-import IndicadoresQualidadePage from "./pages/IndicadoresQualidadePage";
-import ResultadoEscorePage from "./pages/ResultadoEscorePage";
-import PromocaoBasePage from "./pages/PromocaoBasePage";
-import AuditoriaBaseClinicaPage from "./pages/AuditoriaBaseClinicaPage";
-import RevisaoClinicaPage from "./pages/RevisaoClinicaPage";
-import MinhasPatologiasPage from "./pages/MinhasPatologiasPage";
-import ProtocolosEscoresPage from "./pages/ProtocolosEscoresPage";
-import AtualizacoesPage from "./pages/AtualizacoesPage";
-import AssinaturaPage from "./pages/AssinaturaPage";
-import AssinaturaRetornoPage from "./pages/AssinaturaRetornoPage";
+const IVDilutionAdminPage = lazy(() => import("./modules/iv-dilution/IVDilutionAdminPage"));
+const NewPrescriptionPage = lazy(() => import("./modules/prescription/mvp/NewPrescriptionPage"));
+const RequisitosPage = lazy(() => import("./pages/RequisitosPage"));
+const SegurancaPage = lazy(() => import("./pages/SegurancaPage"));
+const IndicatorsPage = lazy(() => import("./pages/IndicatorsPage"));
+const InternacoesPage = lazy(() => import("./pages/InternacoesPage"));
+const NotificacoesPage = lazy(() => import("./pages/NotificacoesPage"));
+const ClinicalTestsPage = lazy(() => import("./pages/ClinicalTestsPage"));
+const PublicDocumentPage = lazy(() => import("./pages/PublicDocumentPage"));
+const ImportarLotePage = lazy(() => import("./pages/ImportarLotePage"));
+const CuradoriaPage = lazy(() => import("./pages/CuradoriaPage"));
+const VinculoExamesPage = lazy(() => import("./pages/VinculoExamesPage"));
+const VinculoMedicamentosPage = lazy(() => import("./pages/VinculoMedicamentosPage"));
+const ChecklistProtocoloPage = lazy(() => import("./pages/ChecklistProtocoloPage"));
+const RevisaoDosesPage = lazy(() => import("./pages/RevisaoDosesPage"));
+const EscoresTraumaPage = lazy(() => import("./pages/EscoresTraumaPage"));
+const EscoresServidorPage = lazy(() => import("./pages/EscoresServidorPage"));
+const ProtocoloPSPage = lazy(() => import("./pages/ProtocoloPSPage"));
+const AuditoriaProtocolosPage = lazy(() => import("./pages/AuditoriaProtocolosPage"));
+const EtapasProtocoloPage = lazy(() => import("./pages/EtapasProtocoloPage"));
+const IndicadoresQualidadePage = lazy(() => import("./pages/IndicadoresQualidadePage"));
+const ResultadoEscorePage = lazy(() => import("./pages/ResultadoEscorePage"));
+const PromocaoBasePage = lazy(() => import("./pages/PromocaoBasePage"));
+const AuditoriaBaseClinicaPage = lazy(() => import("./pages/AuditoriaBaseClinicaPage"));
+const RevisaoClinicaPage = lazy(() => import("./pages/RevisaoClinicaPage"));
+const MinhasPatologiasPage = lazy(() => import("./pages/MinhasPatologiasPage"));
+const ProtocolosEscoresPage = lazy(() => import("./pages/ProtocolosEscoresPage"));
+const AtualizacoesPage = lazy(() => import("./pages/AtualizacoesPage"));
+const AssinaturaPage = lazy(() => import("./pages/AssinaturaPage"));
+const AssinaturaRetornoPage = lazy(() => import("./pages/AssinaturaRetornoPage"));
 import RequireSubscription from "./modules/billing/components/RequireSubscription";
 import { AuthProvider } from "./components/providers/AuthProvider";
-import LegalPage from "./pages/LegalPage";
+const LegalPage = lazy(() => import("./pages/LegalPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,7 @@ const App = () => (
       <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <Suspense fallback={<div className="grid min-h-[40vh] place-items-center" role="status" aria-label="Carregando tela"><span className="size-6 animate-spin rounded-full border-2 border-muted border-t-primary" /></div>}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
@@ -87,7 +89,6 @@ const App = () => (
             <Route index element={<Home />} />
             <Route path="prescricao/nova" element={<NewPrescriptionPage />} />
             <Route path="prescricoes" element={<PrescricoesPage />} />
-            <Route path="pacientes" element={<Patients />} />
             <Route path="modelos" element={<QuickTemplates />} />
             <Route path="medicamentos" element={<MedicationsBrowse />} />
             <Route path="patologias" element={<MinhasPatologiasPage />} />
@@ -102,6 +103,7 @@ const App = () => (
             <Route path="requisitos" element={<RequisitosPage />} />
             <Route path="seguranca" element={<SegurancaPage />} />
             <Route path="escores-trauma" element={<EscoresTraumaPage />} />
+            <Route path="escores" element={<EscoresServidorPage />} />
             <Route path="protocolos-escores" element={<ProtocolosEscoresPage />} />
             <Route path="protocolos" element={<ProtocoloPSPage />} />
             <Route path="protocolos/:codigo" element={<ProtocoloPSPage />} />
@@ -127,6 +129,7 @@ const App = () => (
           <Route path="/admin/vinculos-clinicos" element={<ProtectedRoute><AdminRoute><VinculoMedicamentosPage /></AdminRoute></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>

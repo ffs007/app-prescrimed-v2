@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, FilePlus2, Sparkles, History, Menu } from "lucide-react";
+import { Home, FilePlus2, Sparkles, History, Calculator } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -7,7 +7,7 @@ const items = [
   { title: "Nova", url: "/app/prescricao/nova", icon: FilePlus2 },
   { title: "Modelos", url: "/app/modelos", icon: Sparkles },
   { title: "Histórico", url: "/app/historico", icon: History },
-  { title: "Mais", url: "/app/pacientes", icon: Menu },
+  { title: "Escores", url: "/app/escores", icon: Calculator },
 ];
 
 export default function MobileBottomNav() {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Printer, Share2, Copy, PenLine, Check } from "lucide-react";
+import { Printer, Share2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -17,8 +17,8 @@ interface Props {
 }
 
 /**
- * Ações finais de emissão — botões padronizados para Imprimir/PDF, Compartilhar
- * e (placeholder) Assinar digitalmente. Compartilhar usa Web Share API quando
+ * Ações finais de emissão — botões padronizados para Imprimir/PDF e Compartilhar.
+ * A assinatura digital não é oferecida (sem ICP-Brasil). Compartilhar usa Web Share API quando
  * disponível (mobile) e cai pra clipboard no desktop.
  */
 const EmissionActions = ({ documentText, shareTitle, onPrint, canEmit, blockedReason }: Props) => {
@@ -79,18 +79,6 @@ const EmissionActions = ({ documentText, shareTitle, onPrint, canEmit, blockedRe
       >
         {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
         Compartilhar
-      </Button>
-      <Button
-        variant="ghost"
-        className="h-11 gap-2 text-ink-faint hover:text-ink-muted"
-        disabled
-        title="Assinatura digital — em breve"
-      >
-        <PenLine className="h-4 w-4" />
-        <span className="hidden sm:inline">Assinar</span>
-        <span className="rounded-full border border-ink-soft px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-editorial">
-          Em breve
-        </span>
       </Button>
     </div>
   );
