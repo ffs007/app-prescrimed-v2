@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseUntyped } from "@/integrations/supabase/untyped";
 import { logAIUsage } from "../lib/aiLog";
+import { AI_ERROR_TEXT, readFunctionErrorMessage } from "../lib/functionsError";
 import type { PendingUpdate, ProtocolVersion, UpdateStatus } from "../lib/types";
 
 interface DiscoveredItem {
@@ -51,8 +52,8 @@ export function useAIUpdates() {
         body: { modo: "atualizacoes", patologia },
       });
       const payload = data as { itens?: DiscoveredItem[]; fonte?: string; modelo?: string; error?: string } | null;
-      if (payload?.error) throw new Error(payload.error);
-      if (error) throw error;
+      if (payload?.error) throw new Error(AI_ERROR_TEXT[payload.error] ?? payload.error);
+      if (error) throw new Error(await readFunctionErrorMessage(error, "Não foi possível buscar agora."));
 
       const itens = payload?.itens ?? [];
       if (!itens.length) return { inseridos: 0, fonte: payload?.fonte ?? "gateway" };

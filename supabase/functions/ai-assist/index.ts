@@ -173,6 +173,14 @@ Deno.serve(async (req) => {
   const modelo = (cred?.modelo_preferido ?? "").trim() || "anthropic/claude-sonnet-4";
   const lovableKey = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
+  // Chatbot e atualizações por IA são recursos Pro (1.9). "documento" e
+  // "validar_template" não são — ficam livres. Checado aqui, antes de
+  // qualquer chamada paga a provedor, não só escondido no front.
+  if (body.modo === "chat" || body.modo === "atualizacoes") {
+    const { data: assinaturaAtiva } = await admin.rpc("has_active_subscription", { user_uuid: user.id });
+    if (!assinaturaAtiva) return json(403, { error: "assinatura-necessaria" });
+  }
+
   const run = async (system: string, userContent: string, preferSearch = false) => {
     if (preferSearch && perplexityKey) {
       const r = await searchPerplexity(perplexityKey, system, userContent);

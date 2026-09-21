@@ -2,17 +2,8 @@
 import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAIUsage } from "../lib/aiLog";
+import { AI_ERROR_TEXT, readFunctionErrorMessage } from "../lib/functionsError";
 import type { AIChatMessage } from "../lib/types";
-
-const ERROR_TEXT: Record<string, string> = {
-  "nao-autenticado": "Sua sessão expirou. Entre novamente.",
-  "rate-limited": "Muitas consultas seguidas. Aguarde alguns segundos.",
-  "credits-exhausted": "Os créditos de IA acabaram. Adicione créditos ou informe sua própria chave.",
-  "missing-api-key": "Nenhuma chave de IA disponível. Informe sua chave nas configurações.",
-  "openrouter-erro": "A chave do OpenRouter foi recusada. Verifique-a nas configurações.",
-  "perplexity-erro": "A chave da Perplexity foi recusada. Verifique-a nas configurações.",
-  "resposta-invalida": "A IA devolveu uma resposta que não pôde ser lida. Tente de novo.",
-};
 
 export interface AIAssistResponse {
   texto: string;
@@ -39,13 +30,13 @@ export function useAIAssist() {
       const { data, error: invokeErr } = await supabase.functions.invoke("ai-assist", { body });
       const payload = data as (AIAssistResponse & { error?: string }) | null;
       if (payload?.error) {
-        setError(ERROR_TEXT[payload.error] ?? "Não foi possível consultar a IA agora.");
+        setError(AI_ERROR_TEXT[payload.error] ?? "Não foi possível consultar a IA agora.");
         return null;
       }
       if (invokeErr) throw invokeErr;
       return payload;
     } catch (e) {
-      setError((e as Error).message || "Falha na consulta à IA.");
+      setError(await readFunctionErrorMessage(e, "Falha na consulta à IA."));
       return null;
     } finally {
       setLoading(false);
