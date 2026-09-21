@@ -247,7 +247,7 @@ Com o foco em médico individual (Q1), a Onda 1 **não vira produto instituciona
 | 1.6 | **Os 16 papéis da T2 (Q7)**: estender o enum, mapear os 9 atuais, criar `roles_permissions`; RLS alinhada ao `permissions.ts` | Front e servidor concordam por teste; o médico individual segue como `owner` sem ver nada novo |
 | 1.7 | *(adiado até o 1º cliente institucional)* UI admin: convidar membro, papéis, unidades, módulos ativos | Fluxo de convite ponta a ponta |
 | 1.8 | Feature flags por organização e por plano (`feature_flags`) | Módulo desligado some do menu e da API |
-| 1.9 | **Gate de assinatura no servidor** para os recursos Pro (AIH, notificações, atualizações por IA, chatbot): função `has_active_subscription()` usada nas RLS e nas edge functions | Chamada direta à API sem assinatura ativa é negada; teste com conta sem assinatura |
+| 1.9 | ✅ **CONCLUÍDO (2026-09-21)** — Gate de assinatura no servidor para os recursos Pro (AIH, notificações, atualizações por IA, chatbot): `has_active_subscription()`/`has_active_subscription_self()` usadas nas RLS (`notificacoes_compulsorias`, `ia_atualizacoes_pendentes`, `protocolo_versoes`, `documentos_gerados`) e na edge function `ai-assist` | Chamada direta à API sem assinatura ativa é negada; teste com conta sem assinatura |
 
 ### Onda 2 — Paciente e atendimento reais (prontuário longitudinal mínimo) · G
 | # | Passo | Critério de aceite |
@@ -358,6 +358,17 @@ Conferi o código antes de mexer, e religar literalmente teria três efeitos rui
 
 ### Q11 — rotas Pro (`/app/internacoes`, `/app/notificacoes`, `/app/atualizacoes`)
 **Não removi.** Conferi que elas não são casca vazia: envolvem a bancada de AIH, a bancada de notificações e as atualizações por IA, cerca de 20 arquivos. Apagar isso por um "cortar" ambíguo removeria produto pago. O risco real era o gate só no front; o conserto correto é o gate no servidor (RLS ou RPC por assinatura ativa), passo novo **1.9** abaixo. Se a sua intenção era realmente tirar os três do beta, é só dizer e eu removo rotas, menu e busca (o git guarda tudo).
+
+### 1.9 — concluído (2026-09-21)
+Migration `20260921120000_gate_assinatura_servidor.sql` aplicada no projeto `zwwalaioamxcvxbihxlr` (org `ffs medical servicos medicos`). No caminho, achei e apliquei junto uma migration anterior (`20260919120000_documento_tipo_regulatorios.sql`) que estava commitada no repo mas nunca tinha rodado no banco — sem ela, o enum `documento_tipo` não tinha `aih`/`notificacao_compulsoria` e a 1.9 quebrava.
+
+- `has_active_subscription(uuid)` reescrita (a versão antiga, com parâmetro `environment`, tinha `EXECUTE` revogado de `authenticated` desde a migration de 2026-09-09 — código morto, causava ambiguidade de overload e foi derrubada).
+- `has_active_subscription_self()` nova, wrapper SECURITY DEFINER que só responde sobre `auth.uid()` — liberada para `authenticated`.
+- RLS: INSERT em `notificacoes_compulsorias`, `ia_atualizacoes_pendentes` e `protocolo_versoes` (só quando `origem <> 'manual'`) agora exige assinatura ativa; SELECT/UPDATE/DELETE seguem livres.
+- `documentos_gerados`: INSERT de `tipo IN ('aih', 'notificacao_compulsoria')` exige assinatura ativa; os outros 13 tipos continuam livres.
+- Edge function `ai-assist`: `modo IN ('chat', 'atualizacoes')` checa `has_active_subscription` via RPC antes de gastar crédito com provedor externo.
+- No caminho, corrigido bug em `functionsError.ts` (novo, extraído de `useAIAssist.ts`/`useAIUpdates.ts` que duplicavam o dicionário de erro): corpo de erro não-JSON caía no `error.message` genérico do supabase-js em vez do fallback amigável. Teste cobria o caso e pegou.
+- Lint 0 erros, 5/5 testes de `functionsError`, build ok. Commits `e6b444e` (feature) e `5c08f40` (rename cosmético não relacionado, achado no diff).
 
 ---
 
