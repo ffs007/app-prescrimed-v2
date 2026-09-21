@@ -1,5 +1,28 @@
 # Relatório — Claude Code
 
+## Atualização 2026-09-21 — Acesso ao Supabase destravado; missão P0 (persistência, logout, RLS curadoria)
+
+Diferente da rodada anterior (abaixo), o acesso ao projeto `zwwalaioamxcvxbihxlr` **está funcionando** (MCP Supabase reconectado nesta sessão). Migrations e deploys pendentes do bloqueio anterior já foram aplicados (passos 0.2/0.3/0.4 do roadmap, ver `RELATORIO_PRESCRIMED_PERFEITO.md`).
+
+### Veredito
+**GO beta controlado** para o que esta missão cobria. Os 3 itens de código pedidos foram checados: 2 já estavam corrigidos (rodadas anteriores, 0.7/0.10 e P0-1), 1 tinha bug real de RLS, corrigido agora.
+
+### P0 comprovados
+- [`supabase/migrations` — antes desta rodada] RLS de `stg_import_lotes`, `stg_exames`, `stg_patologias`, `stg_patologia_exames`, `curadoria_decisoes` e `etl_promocao_log` (SELECT) exigia `has_role(admin)`. `AdminRoute.tsx:14` libera a rota para `isAdmin OR isReviewer` (`useIVPermissions.ts:9,29,31`) → usuário com papel `revisor` entrava em `/admin/curadoria` e `/admin/promocao-base` e toda leitura/gravação caía em 403 do PostgREST. **Corrigido**: migration `20260921130000_rls_curadoria_revisor.sql`, aplicada em produção — as 5 tabelas passam a aceitar admin OU revisor (mesmo padrão já usado em `base_patologia_exames.base_write_admin_revisor`). A promoção final (`fn_etl_promover_etapa`/`fn_etl_promover_tudo`, chamadas por `PromocaoBasePage.tsx:131,152`) **continua admin-only de propósito** — não mexi nisso, é decisão de segurança (última etapa do pipeline antes de virar produção), não bug. Revisor agora vê o log de ETL mas não dispara promoção.
+- [`src/pages/Dashboard.tsx:835-884` `handleEmit`; `src/modules/documents/lib/persistEmission.ts:75-102` `insertEmission`] **Já corrigido em rodada anterior (0.7/0.10), verificado nesta.** Todo clique de imprimir/baixar (`handleEmit`, `handlePrintGroup`, `handleDownloadGroup`, `EmissionActions`/`AihWorkbench`/`NotificationWorkbench` via `persistFormDocument`) chama `persistOrWarn`→`persistEmission`/`persistFormDocument`, que grava em `documentos_gerados` **e** `log_documentos_clinicos` (`documentSave.ts:41-63`, `logDocumentAction`, chamado dentro de `insertEmission`). Se a gravação falha, `persistOrWarn` retorna `null` e a função de origem faz `return` antes do `window.print()` — fail-closed, sem fire-and-forget. Nenhuma alteração necessária.
+- [`src/components/providers/AuthProvider.tsx:78-80`; `src/lib/sessionCleanup.ts`] **Já corrigido em rodada anterior (P0-1), verificado nesta.** `signOut()` chama `supabase.auth.signOut()` e `clearLocalAppData()` (limpa todas as chaves `prescrimed*`/`clinic-info`/`signature-config`/etc do `localStorage`, preservando só `prescrimed:install-banner-dismissed`) mesmo se o signOut remoto falhar. `AppShell.tsx:27-32` e `ContextHeader.tsx:32,94-98` (botão "Sair") já chamam esse `signOut` do `useAuth()`. Coberto por `src/test/sessionCleanup.test.ts`. Nenhuma alteração necessária.
+
+### Cortar do lançamento
+- Nada novo identificado nesta missão.
+
+### Teste decisivo
+- Criar usuário com `role = 'revisor'` (sem `admin`) em `user_roles`; logar; abrir `/admin/curadoria` com um `lote_id` existente em `stg_import_lotes`. Esperado: lista carrega, decisões em `curadoria_decisoes` salvam, RPCs `promover_stg_*`/`aprovar_lote` executam (essas já eram admin-OU-service, não mudaram). Em `/admin/promocao-base`: página abre e mostra o log (`etl_promocao_log`), mas clicar em "Promover" deve devolver a exceção `"Apenas administradores podem executar a promoção de dados"` — comportamento esperado, não é 403 do PostgREST.
+
+### Próxima ação única
+Rodar o teste decisivo acima com um usuário `revisor` real antes de liberar a curadoria para quem não é `admin`.
+
+---
+
 Escopo original: revisão somente leitura (P0 de cadastro, logout, checkout, ativação de assinatura e isolamento de sessão).
 Esta versão (2026-09-20) consolida o que mudou depois das correções, cruzando os relatórios do Trae e do ZCode. Cada achado foi conferido no código atual da branch `fix/monetization-baseline`. Nada foi commitado.
 
