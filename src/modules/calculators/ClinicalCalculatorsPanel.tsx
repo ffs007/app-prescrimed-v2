@@ -70,7 +70,7 @@ const CalculatorCard = ({ def, reason, autofill, onUseResult, defaultOpen, score
   }, [def, values, autofill]);
 
   /** Escores com função SQL equivalente são conferidos e auditados no servidor antes de entrar no documento. */
-  const useResult = async () => {
+  const handleUseResult = async () => {
     if (!result || !onUseResult) return;
     if (!hasServerScore(def.id)) {
       onUseResult(def.short, result.text);
@@ -179,7 +179,7 @@ const CalculatorCard = ({ def, reason, autofill, onUseResult, defaultOpen, score
                   size="sm"
                   className="mt-2.5 h-7 gap-1 px-2 text-[11px]"
                   disabled={auditing}
-                  onClick={() => void useResult()}
+                  onClick={() => void handleUseResult()}
                 >
                   <Plus className="h-3 w-3" />
                   {auditing ? "Registrando…" : "Usar no documento"}
