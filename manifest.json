@@ -1,0 +1,94 @@
+{
+  "produto": "PrescriMed",
+  "bloco": "NEUROLOGIA",
+  "lote_id": "LOTE_NEUROLOGIA_COMPLETO_V1",
+  "versao": "V1",
+  "data_extracao": "2026-09-19",
+  "fontes": [
+    {
+      "fonte_id": "F001",
+      "nome": "PCDT Esclerose Múltipla 2024"
+    },
+    {
+      "fonte_id": "F013",
+      "nome": "Portaria SECTICS/MS Nº 32/2025 (Inebilizumabe)"
+    },
+    {
+      "fonte_id": "F018",
+      "nome": "Auditoria Regulatória de Diretrizes Clínicas em Neurologia"
+    },
+    {
+      "fonte_id": "F021",
+      "nome": "Guidelines SBACV Doença Cerebrovascular Extracraniana"
+    },
+    {
+      "fonte_id": "F028",
+      "nome": "PCDT Epilepsia Refratária G40.0"
+    },
+    {
+      "fonte_id": "F036",
+      "nome": "CLARITY AD Phase 3 Trial Data"
+    },
+    {
+      "fonte_id": "F053",
+      "nome": "Diretrizes de Rastreamento Populacional em Neurologia"
+    },
+    {
+      "fonte_id": "F057",
+      "nome": "PCDT Esclerose Lateral Amiotrófica"
+    },
+    {
+      "fonte_id": "F065",
+      "nome": "ESO Recommendation on Tenecteplase for Acute Ischaemic Stroke"
+    },
+    {
+      "fonte_id": "F080",
+      "nome": "PCDT Miastenia Gravis Autoimune"
+    },
+    {
+      "fonte_id": "F085",
+      "nome": "Relatório CONITEC Inebilizumabe para DENMO"
+    },
+    {
+      "fonte_id": "F102",
+      "nome": "O Novo Paradigma da Janela Fisiológica e Molecular na Prática Neurológica"
+    },
+    {
+      "fonte_id": "F105",
+      "nome": "PCDT Síndrome de Guillain-Barré"
+    },
+    {
+      "fonte_id": "F117",
+      "nome": "PCDT Doença de Parkinson"
+    },
+    {
+      "fonte_id": "F126",
+      "nome": "Regras de Decisão Clínica e Escores Validados na Solicitação de Exames"
+    },
+    {
+      "fonte_id": "F128",
+      "nome": "Resumo PCDT Doença de Alzheimer SES/SC 2026"
+    }
+  ],
+  "quantidades": {
+    "patologias": 42,
+    "exames": 30,
+    "patologia_exames": 30,
+    "medicamentos_principios": 29,
+    "medicamentos_apresentacoes": 29,
+    "medicamentos_doses": 22,
+    "medicamentos_populacoes": 11,
+    "medicamentos_contraindicacoes": 9,
+    "medicamentos_interacoes": 6,
+    "alertas_clinicos": 5,
+    "rejeitados_ou_pendentes": 42
+  },
+  "registros_pendentes": 210,
+  "registros_com_conflito": 5,
+  "observacoes": [
+    "Todos os novos registros foram marcados com status_revisao = 'pendente_revisao'.",
+    "Preservados 5 conflitos entre diretrizes brasileiras (PCDT/SBACV/SBC) e internacionais (USPSTF/ESO).",
+    "Sem imputação de códigos LOINC/TUSS/SIGTAP ausentes na fonte.",
+    "Sem conversão de unidades ou alteração de nomes de campos."
+  ]
+}

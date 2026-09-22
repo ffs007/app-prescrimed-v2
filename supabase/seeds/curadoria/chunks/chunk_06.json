@@ -1,0 +1,18 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 6,
+  "promptNome": "protocolos_clinicos",
+  "promptInputHash": "",
+  "instituicaoId": null,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 06: 24 protocolos clínicos + versionamento semântico por protocolo (protocolo_clinico_versao) + 9 etapas fixas por versão (1 triagem, 2 avaliação inicial, 3 estabilização, 4 solicitação exames, 5 tratamento, 6 critérios alta, 7 critérios transferência, 8 critérios internação, 9 pontos checagem). UNIQUE (versao_id, numero_etapa)."
+  },
+  "tabelas": {
+    "protocolos_clinicos": [],
+    "protocolo_clinico_versao": [],
+    "protocolo_etapa": [],
+    "condicao_protocolo_clinico": []
+  }
+}

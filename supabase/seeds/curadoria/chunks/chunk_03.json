@@ -1,0 +1,17 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 3,
+  "promptNome": "medicamentos_alternativos",
+  "promptInputHash": "",
+  "instituicaoId": null,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 03: 20 classes medicamentosas + vínculo condicao ↔ classes (1ª/2ª linha, adjuvante, resgate) + condicao ↔ medicamentos_alternativos (FK public.base_medicamentos_geral.id UUID obrigatória). CHECK: eh_off_label=true → off_label_justificativa >= 30 chars. 6 chaves justificativas_escolha jsonb: custo, disponibilidade, eficacia, perfil_efeitos_adversos, seguranca_populacao, adequacao_protocolo."
+  },
+  "tabelas": {
+    "classes_medicamentosas": [],
+    "condicao_classes_medicamentosas": [],
+    "condicao_medicamentos_alternativos": []
+  }
+}

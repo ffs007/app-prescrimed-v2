@@ -1,0 +1,15 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 4,
+  "promptNome": "exame_fisico_direcionado",
+  "promptInputHash": "",
+  "instituicaoId": null,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 04: Exame físico direcionado por condição. 16 sistemas_envolvidos ENUM + manobras obrigatórias + achados sugestivos + red_flags_exame_fisico + ordem_inspecao."
+  },
+  "tabelas": {
+    "condicao_exame_fisico": []
+  }
+}

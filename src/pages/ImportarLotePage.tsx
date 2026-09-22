@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, Play, Trash2, Upload } from "lucide-react";
@@ -33,6 +33,7 @@ interface LoteHistorico {
 }
 
 const FORMATOS: { value: Formato; label: string }[] = [
+  { value: "jsonl", label: "JSONL (um objeto por linha)" },
   { value: "sql", label: "SQL pronto" },
   { value: "markdown", label: "Tabela markdown" },
   { value: "pipe", label: "Texto livre delimitado por barra vertical" },
@@ -46,6 +47,7 @@ export default function ImportarLotePage() {
   const [loteId, setLoteId] = useState(() => sugerirLoteId("lote"));
   const [overrides, setOverrides] = useState<Record<string, string | null>>({});
   const [analise, setAnalise] = useState<AnalysisResult | null>(null);
+  const arquivoRef = useRef<HTMLInputElement>(null);
 
   const def = TABLE_DEFS[destino];
 
@@ -151,10 +153,39 @@ export default function ImportarLotePage() {
           <CardDescription>Cole o lote completo abaixo.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex justify-end">
+            <input
+              ref={arquivoRef}
+              type="file"
+              accept=".md,.txt,.jsonl,.sql,text/markdown,text/plain,application/sql"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) {
+                  toast.error("O arquivo deve ter até 5 MB.");
+                  return;
+                }
+                const content = await file.text();
+                setTexto(content);
+                setFormato(/\.jsonl$/i.test(file.name)
+                  ? "jsonl"
+                  : /\.sql$/i.test(file.name) || /^\s*insert\s+into\b/i.test(content)
+                    ? "sql"
+                    : "markdown");
+                setOverrides({});
+                setAnalise(null);
+              }}
+            />
+            <Button type="button" variant="outline" onClick={() => arquivoRef.current?.click()}>
+              <Upload className="mr-2 h-4 w-4" /> Abrir arquivo
+            </Button>
+          </div>
           <Textarea
             value={texto}
             onChange={(e) => { setTexto(e.target.value); resetAnalise(); }}
-            placeholder="Cole aqui o SQL, a tabela markdown ou as linhas separadas por |"
+            placeholder="Cole o conteúdo ou abra um arquivo Markdown, TXT, JSONL ou SQL."
             className="min-h-[220px] font-mono text-xs"
           />
 

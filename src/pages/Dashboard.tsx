@@ -72,11 +72,17 @@ import EmissionHistoryDrawer from "@/modules/prescription/components/EmissionHis
 import { useEmissionHistory, type EmissionRecord, type NewEmissionRecord } from "@/modules/prescription/hooks/useEmissionHistory";
 import { savePrescriptionRecord } from "@/modules/prescription/services/prescriptionRecords";
 import { attachDocumentPdf, persistEmission, resolveDocumentoTipo } from "@/modules/documents/lib/persistEmission";
+import { runEmissionFailClosed } from "@/modules/documents/lib/emissionFailClosed";
 import { logDocumentAction } from "@/modules/documents/lib/documentSave";
 import { useDocumentsSettings } from "@/modules/documents/hooks/useDocumentsSettings";
 import { useSignatureProfiles } from "@/modules/documents/hooks/useSignatureProfiles";
 import { mergeClinicInfo, mergeSignatureConfig } from "@/modules/documents/lib/applySignatureProfile";
 import { buildPdfOptions, downloadBlob } from "@/modules/documents/lib/pdfPrint";
+import PatientProfileFields from "@/modules/clinical-alerts/PatientProfileFields";
+import IVPrescriberCard from "@/modules/iv-dilution/IVPrescriberCard";
+import InteractionsRiskCard from "@/modules/interactions/InteractionsRiskCard";
+import { useInteractionsBase } from "@/modules/interactions/hooks/useInteractionsBase";
+import type { PatientCtx as InteractionsPatientCtx, PrescItem } from "@/modules/interactions/lib/interactionsCalc";
 import SmartInputDialog from "@/modules/smart-input/SmartInputDialog";
 import ScoresDialog from "@/modules/scores/ScoresDialog";
 import AssistiveDecisionSupport from "@/modules/prescription/components/AssistiveDecisionSupport";
@@ -121,8 +127,16 @@ const Dashboard = () => {
   const [activePathology, setActivePathology] = useState<Pathology | null>(null);
   const [activeSyndrome, setActiveSyndrome] = useState<Syndrome | null>(null);
   const [gatePassed, setGatePassed] = useState(false);
-  /** Etapa 2 — tipo de documento já escolhido nesta sessão de atendimento. */
-  const [docChosen, setDocChosen] = useState(false);
+  /**
+   * UX OPERACIONAL: etapa "docChosen" foi unificada com a etapa de builder.
+   * ActionGrid + BuilderShell coexistem na mesma coluna após a patologia ser
+   * escolhida, evitando 1 transição / 1 clique obrigatório por atendimento.
+   *
+   * Legado preservado: propriedade de estado permanece porque ActionGrid ainda
+   * usa "selecionado vs rascunhos" e o mobile FAB ainda depende dela (nunca
+   * mais usada como gate de renderização).
+   */
+  const [docChosen, setDocChosen] = useState(true);
   const pathologyMemory = usePathologyMemory();
   const { syndromes, isLoading: syndromesLoading } = useSyndromes();
   const { bySyndrome: syndromePathologies } = useSyndromePathologies();
@@ -210,8 +224,45 @@ const Dashboard = () => {
   const [replayRecord, setReplayRecord] = useState<EmissionRecord | null>(null);
   const [printedDocumentoId, setPrintedDocumentoId] = useState<string | null>(null);
 
-  // Histórico de emissões persistido
   const emissionHistory = useEmissionHistory();
+
+  // --- MÓDULO FANTASMA #3 — interações medicamentosas ativas no prescritor
+  // Dados carregados da base de interações + configurações padrão
+  const { records: interactionsBase, settings: interactionsSettings } = useInteractionsBase();
+
+  // --- Derivados de UI OPERACIONAL (módulos fantasmas reconectados) ---
+  const interactionsPatientCtx = useMemo<InteractionsPatientCtx>(() => {
+    const years = patient.ageInYears;
+    return {
+      age_years: typeof years === "number" ? years : undefined,
+      weight_kg: patient.weightKg ?? undefined,
+      pregnant: !!isPregnant,
+      lactating: false,
+      renal: patient.hasRenalImpairment,
+    };
+  }, [patient.ageInYears, patient.weightKg, isPregnant, patient.hasRenalImpairment]);
+
+  /**
+   * Detecta injetáveis (EV/IV/IM/SC) no texto da prescrição para ativar o card
+   * de diluição IV — MÓDULO FANTASMA #2.
+   */
+  const hasInjectables = useMemo(() => {
+    if (action !== "receita") return false;
+    const rx = /\b(EV|IV|IM|SC|VENOSA|INJETA|INJETÁVEL|BOLUS|INFUSÃO)\b/i;
+    return selected.some((m) => rx.test(m.name) || rx.test(m.text || ""));
+  }, [action, selected]);
+
+  const prescItems: PrescItem[] = useMemo(
+    () => selected.map((m) => ({ id: String(m.id), nome: m.name, texto: m.text || m.name })),
+    [selected],
+  );
+
+  const showInteractionRisk =
+    action === "receita" &&
+    (prescItems.length > 0 || assessment.alerts.length > 0) &&
+    interactionsBase.length > 0;
+
+  const showIVDilution = action === "receita" && (hasInjectables || selected.length > 0);
 
   // Prescription
   const { getMedText } = usePediatricDose({ isPediatric, weight });
@@ -546,7 +597,6 @@ const Dashboard = () => {
     setActivePathology(pathology);
     setActiveSyndrome(null);
     setGatePassed(true);
-    setDocChosen(false);
     pathologyMemory.pushRecent(pathology.id);
     pathologyMemory.registerUse(pathologyKey(pathology.name));
     prefillDocuments(pathology.name, pathology.cid);
@@ -557,7 +607,6 @@ const Dashboard = () => {
     setActiveSyndrome(s);
     setActivePathology(null);
     setGatePassed(true);
-    setDocChosen(false);
     prefillDocuments(s.nome, s.cid);
     toast.success(`Síndrome "${s.nome}" carregada`);
   };
@@ -567,7 +616,6 @@ const Dashboard = () => {
     setActivePathology(null);
     setActiveSyndrome(null);
     setGatePassed(true);
-    setDocChosen(false);
   };
 
   /** Etapa 3 — conteúdo correlacionado à patologia (vazio no fluxo em branco). */
@@ -657,7 +705,19 @@ const Dashboard = () => {
     ...extra,
   });
 
-  const handlePrint = () => {
+  /**
+   * Abre o diálogo de impressão do navegador.
+   *
+   * Recebe um `pdfBlob` opcional quando chamamos de handleEmit (fluxo fail-closed):
+   * nesse caso o PDF já foi gerado, enviado para o bucket e persistido no banco
+   * ANTES de chegarmos aqui — setar printOpen=true apenas revela o PrintArea
+   * no DOM (ele já existe no React quando a flag sobe), então o setTimeout
+   * garante que o CSS da impressora renderizou antes do window.print().
+   * Se não vier blob, volta para o fluxo legado: só abre a impressora e a
+   * geração do PDF ficará a cargo do PrintArea handler "Salvar PDF" (que é
+   * o mesmo de sempre e também passa por bucket).
+   */
+  const handlePrint = (_opts?: { pdfBlob?: Blob }) => {
     setPrintOpen(true);
     setTimeout(() => window.print(), 300);
   };
@@ -727,66 +787,125 @@ const Dashboard = () => {
     });
 
   /**
-   * Gate de revisão final (documentos_settings.exigir_revisao_final_concluida).
-   * Checado aqui, não só no disabled do botão: nenhum caminho de emissão passa sem
-   * a confirmação quando o admin exige — o botão desabilitado é só a UI dessa regra.
+   * Helper FAIL-CLOSED para grupos regulatórios (Receitas).
+   *
+   * Sequência obrigatória (qualquer throw aborta a entrega):
+   *   1) persistEmission → documentos_gerados + auditoria
+   *   2) savePrescriptionRecord → prescricoes_historico
+   *   3) html2pdf → Blob binário do nó do PrintArea filtrado
+   *   4) attachDocumentPdf → Storage `documentos-pdf`
+   *   5) emissionHistory.add → cache do navegador
    */
-  const blockIfReviewPending = (): boolean => {
-    if (finalReviewOk) return false;
-    toast.error("Confirme a revisão final antes de emitir");
-    return true;
+  const runGroupEmissionFailClosed = async (
+    group: RegulatoryGroup,
+    acao: "imprimiu" | "gerou_pdf",
+  ) => {
+    const snapshot = groupSnapshot(group);
+    setActiveGroup(group);
+    setPrintOpen(true);
+    // Aguarda render do PrintArea com o grupo aplicado (filtro selecionado)
+    await new Promise((r) => setTimeout(r, 350));
+    const node = document.querySelector(".prescription-print-area") as HTMLElement | null;
+    if (!node) {
+      setPrintOpen(false);
+      setActiveGroup(null);
+      toast.error("Não foi possível preparar o documento");
+      return null;
+    }
+    const isLandscape = group.family === "controle-especial" || group.family === "antimicrobiano";
+    const filename = `Receita_${group.rules.label.replace(/\s+/g, "_")}${group.subTotal && group.subTotal > 1 ? `_${group.subIndex}de${group.subTotal}` : ""}_${(patientName || "paciente").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+    let historicoJaRodou = false;
+    const runWorkflow = await runEmissionFailClosed({
+      snapshot,
+      acao,
+      family: group.family,
+      persistDocumento: async (p) => {
+        const id = await persistEmission(p);
+        setPrintedDocumentoId(id);
+        return id;
+      },
+      persistHistorico: async () => {
+        await savePrescriptionRecord({
+          patientName,
+          environment,
+          careContext: context,
+          conditionName: activePathology?.name ?? activeSyndrome?.nome ?? null,
+          conditionType: activePathology ? "patologia" : activeSyndrome ? "sindrome" : null,
+          cid: activePathology?.cid ?? activeSyndrome?.cid ?? null,
+          regulatoryLabel: group.rules.label,
+          items: (snapshot.selectedFilter
+            ? snapshot.selected.filter((m) => snapshot.selectedFilter!.includes(m.id))
+            : snapshot.selected
+          ).map((m) => ({ nome: m.name, posologia: m.text || "" })),
+        });
+        historicoJaRodou = true;
+      },
+      generatePdf: async () => {
+        const html2pdf = (await import("html2pdf.js")).default;
+        return html2pdf()
+          .set(buildPdfOptions(filename, isLandscape))
+          .from(node)
+          .outputPdf("blob") as Promise<Blob>;
+      },
+      uploadPdfBucket: attachDocumentPdf,
+      saveLocalHistory: (documentoId) => {
+        emissionHistory.add({ ...snapshot, documentoId });
+      },
+    });
+
+    if (!runWorkflow.allowDelivery) {
+      setPrintOpen(false);
+      setActiveGroup(null);
+      const detail = runWorkflow.error
+        ? `Motivo: ${runWorkflow.error}`
+        : "Verifique a conexão e tente novamente.";
+      toast.error("Emissão clínica bloqueada", {
+        description: `${detail} Nenhum documento foi entregue sem registro.`,
+      });
+      return {
+        allowDelivery: false as const,
+        historicoJaRodou,
+      };
+    }
+    return {
+      allowDelivery: true as const,
+      documentoId: runWorkflow.documentoId!,
+      pdfBlob: runWorkflow.pdfBlob!,
+      filename,
+      historicoJaRodou,
+    };
   };
 
   /** Imprime apenas um grupo regulatório (filtra SelectedMeds). */
   const handlePrintGroup = async (group: RegulatoryGroup): Promise<void> => {
     if (blockIfReviewPending()) return;
-    const snapshot = groupSnapshot(group);
-    const documentoId = await persistOrWarn(snapshot, "imprimiu", group.family);
-    if (!documentoId) return;
-    setActiveGroup(group);
-    setPrintOpen(true);
-    emissionHistory.add({ ...snapshot, documentoId });
-    recordPrescription(group);
-    setTimeout(() => window.print(), 300);
+    const result = await runGroupEmissionFailClosed(group, "imprimiu");
+    if (!result?.allowDelivery) return;
+    // IMPORTANTE: savePrescriptionRecord já rodou DENTRO do workflow fail-closed.
+    // Chamar recordPrescription() aqui duplicaria a linha em `prescricoes_historico`.
+    window.setTimeout(() => {
+      try { window.print(); } finally {
+        window.setTimeout(() => {
+          setPrintOpen(false);
+          setActiveGroup(null);
+        }, 400);
+      }
+    }, 250);
   };
 
   /** Gera PDF apenas do grupo selecionado, usando html2pdf no nó .prescription-print-area. */
   const handleDownloadGroup = async (group: RegulatoryGroup): Promise<void> => {
     if (blockIfReviewPending()) return;
-    setActiveGroup(group);
-    setPrintOpen(true);
-    // Aguarda render do PrintArea filtrado antes de capturar
-    await new Promise((r) => setTimeout(r, 350));
-    const node = document.querySelector(".prescription-print-area") as HTMLElement | null;
-    if (!node) {
-      toast.error("Não foi possível preparar o documento");
-      return;
-    }
+    const result = await runGroupEmissionFailClosed(group, "gerou_pdf");
+    if (!result?.allowDelivery) return;
+    // savePrescriptionRecord já executou no workflow (fail-closed). Duplicar aqui quebraria auditoria.
     try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      const sufix = group.subTotal && group.subTotal > 1 ? `_${group.subIndex}de${group.subTotal}` : "";
-      const filename = `Receita_${group.rules.label.replace(/\s+/g, "_")}${sufix}_${(patientName || "paciente").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      const isLandscape = group.family === "controle-especial" || group.family === "antimicrobiano";
-      const pdf: Blob = await html2pdf()
-        .set(buildPdfOptions(filename, isLandscape))
-        .from(node)
-        .outputPdf("blob");
-      const snapshot = groupSnapshot(group);
-      const documentoId = await persistOrWarn(snapshot, "gerou_pdf", group.family);
-      if (!documentoId) return;
-      downloadBlob(pdf, filename);
-      emissionHistory.add({ ...snapshot, documentoId });
-      recordPrescription(group);
-      try {
-        await attachDocumentPdf(documentoId, pdf);
-        toast.success(`PDF "${group.rules.label}" salvo e registrado`);
-      } catch (err) {
-        console.error("Falha ao anexar PDF ao documento", err);
-        toast.warning("Documento registrado, mas o PDF não foi anexado ao link público.");
-      }
+      downloadBlob(result.pdfBlob, result.filename);
+      toast.success(`PDF "${group.rules.label}" salvo e registrado`);
     } catch (err) {
       console.error(err);
-      toast.error("Falha ao gerar PDF");
+      toast.error("Falha ao baixar PDF");
     } finally {
       setPrintOpen(false);
       setActiveGroup(null);
@@ -831,6 +950,120 @@ const Dashboard = () => {
     safetyOverride.clearAll();
   };
 
+  /**
+   * Helper FAIL-CLOSED para impressão geral (não é grupo regulatório isolado).
+   * Roda: persistEmission → (receita:) savePrescriptionRecord × cada grupo →
+   *       html2pdf da página inteira → attachDocumentPdf da primeira receita.
+   * Se qualquer etapa throw, o documento NÃO sai da impressora e NÃO baixa.
+   */
+  const runWholePrintWorkflowFailClosed = async (): Promise<
+    | { allowDelivery: true; idsByGroup: Map<string, string>; lastDocumentoId: string; pdfBlob: Blob }
+    | { allowDelivery: false }
+  > => {
+    // Prepara PrintArea com todos os documentos
+    setActiveGroup(null);
+    setReplayRecord(null);
+    setPrintOpen(true);
+    await new Promise((r) => setTimeout(r, 400));
+    const node = document.querySelector(".prescription-print-area") as HTMLElement | null;
+    if (!node) {
+      setPrintOpen(false);
+      toast.error("Não foi possível preparar o documento");
+      return { allowDelivery: false };
+    }
+    const filename = `${DOC_TITLES[action].replace(/\s+/g, "_")}_${(patientName || "paciente").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const isLandscape =
+      action === "receita" &&
+      regulatoryResult.groups.some((g) => g.family === "controle-especial" || g.family === "antimicrobiano");
+
+    let lastDocumentoId: string | null = null;
+    const idsByGroup = new Map<string, string>();
+
+    // --- PASSO 1: persistEmission para TODOS os grupos receita (ou 1 snapshot para outros docs)
+    const persistAll = async (): Promise<void> => {
+      if (action === "receita" && regulatoryResult.groups.length > 0) {
+        for (const group of regulatoryResult.groups) {
+          const snapshot = groupSnapshot(group);
+          const id = await persistEmission({ snapshot, family: group.family, acao: "imprimiu" });
+          idsByGroup.set(group.rules.label, id);
+          lastDocumentoId = id;
+          setPrintedDocumentoId(id);
+        }
+        return;
+      }
+      const snapshot = buildSnapshot();
+      const id = await persistEmission({ snapshot, acao: "imprimiu" });
+      lastDocumentoId = id;
+      setPrintedDocumentoId(id);
+    };
+
+    // --- PASSO 2: savePrescriptionRecord para TODAS as receitas (pula outros docs)
+    const persistHistory = async (): Promise<void> => {
+      if (action !== "receita") return;
+      for (const group of regulatoryResult.groups) {
+        const items = (group.items ?? []).map((it) => ({
+          nome: it.selected.name,
+          posologia: it.selected.text || "",
+        }));
+        if (items.length === 0) continue;
+        await savePrescriptionRecord({
+          patientName,
+          environment,
+          careContext: context,
+          conditionName: activePathology?.name ?? activeSyndrome?.nome ?? null,
+          conditionType: activePathology ? "patologia" : activeSyndrome ? "sindrome" : null,
+          cid: activePathology?.cid ?? activeSyndrome?.cid ?? null,
+          regulatoryLabel: group.rules.label,
+          items,
+        });
+      }
+    };
+
+    // --- PASSO 3: Blob PDF
+    const generatePdf = async (): Promise<Blob> => {
+      const html2pdf = (await import("html2pdf.js")).default;
+      return html2pdf()
+        .set(buildPdfOptions(filename, isLandscape))
+        .from(node)
+        .outputPdf("blob") as Promise<Blob>;
+    };
+
+    // --- PASSO 4: upload para bucket (1 documento = 1 upload. Multi-grupo, attach no primeiro grupo)
+    const upload = async (id: string, blob: Blob) => attachDocumentPdf(id, blob);
+
+    // --- PASSO 5: emissionHistory.add (só se tudo passar)
+    const saveLocal = () => {
+      if (action === "receita" && regulatoryResult.groups.length > 0) {
+        for (const group of regulatoryResult.groups) {
+          const snapshot = groupSnapshot(group);
+          const id = idsByGroup.get(group.rules.label);
+          if (id) emissionHistory.add({ ...snapshot, documentoId: id });
+        }
+        return;
+      }
+      if (lastDocumentoId) emissionHistory.add({ ...buildSnapshot(), documentoId: lastDocumentoId });
+    };
+
+    try {
+      await persistAll();
+      await persistHistory();
+      const pdfBlob = await generatePdf();
+      if (!lastDocumentoId) throw new Error("sem documento após persistência — abortado");
+      await upload(lastDocumentoId, pdfBlob);
+      saveLocal();
+      return { allowDelivery: true as const, idsByGroup, lastDocumentoId, pdfBlob };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err ?? "erro desconhecido");
+      setPrintOpen(false);
+      setActiveGroup(null);
+      setReplayRecord(null);
+      toast.error("Emissão clínica bloqueada", {
+        description: `Motivo: ${detail}. Nenhum documento foi entregue sem registro.`,
+      });
+      return { allowDelivery: false as const };
+    }
+  };
+
   // Print with validation + clinical safety gate
   const handleEmit = async (): Promise<void> => {
     // Camada 0: revisão final concluída (documentos_settings), quando exigida.
@@ -866,22 +1099,15 @@ const Dashboard = () => {
       action,
       patientHash: hashPatient(patientName),
     });
-    // Registro obrigatório antes de imprimir: sem gravação no banco, o documento não sai.
-    if (action === "receita" && regulatoryResult.groups.length > 0) {
-      for (const group of regulatoryResult.groups) {
-        const snapshot = groupSnapshot(group);
-        const documentoId = await persistOrWarn(snapshot, "imprimiu", group.family);
-        if (!documentoId) return;
-        emissionHistory.add({ ...snapshot, documentoId });
-        recordPrescription(group);
-      }
-    } else {
-      const snapshot = buildSnapshot();
-      const documentoId = await persistOrWarn(snapshot, "imprimiu");
-      if (!documentoId) return;
-      emissionHistory.add({ ...snapshot, documentoId });
-    }
-    handlePrint();
+
+    // FAIL-CLOSED: todas as etapas de persistência + bucket rodam ANTES do handlePrint.
+    // Se qualquer etapa throw, o workflow retorna allowDelivery=false e o médico NÃO vê a impressora.
+    const workflow = await runWholePrintWorkflowFailClosed();
+    if (!workflow.allowDelivery) return;
+
+    // savePrescriptionRecord (prescricoes_historico) já executou DENTRO do workflow.
+    // Não chamar recordPrescription() aqui para não duplicar linhas.
+    handlePrint({ pdfBlob: workflow.pdfBlob });
   };
 
   /* ============================================================
@@ -1187,7 +1413,7 @@ const Dashboard = () => {
       <main
         className={cnDash(
           "mx-auto grid max-w-7xl gap-5 px-4 pb-28 pt-5 sm:px-6 lg:gap-6 lg:pb-5 print:hidden",
-          gatePassed && docChosen ? "lg:grid-cols-[1.05fr_0.95fr]" : "max-w-3xl",
+          gatePassed ? "lg:grid-cols-[1.05fr_0.95fr]" : "max-w-3xl",
         )}
       >
         {!gatePassed ? (
@@ -1205,58 +1431,6 @@ const Dashboard = () => {
               syndromesLoading={syndromesLoading}
               onSelectSyndrome={handleSelectSyndrome}
               syndromePathologies={syndromePathologies}
-            />
-          </section>
-        ) : !docChosen ? (
-          /* Etapa 2 — escolha do tipo de documento */
-          <section className="space-y-5">
-            <div className="flex items-center gap-3 rounded-lg border border-ink-soft bg-card px-4 py-3 shadow-paper">
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-medium uppercase tracking-editorial text-ink-faint">
-                  Passo 2 · {ENVIRONMENTS.find((e) => e.id === environment)?.label}
-                  {activeSyndrome ? " · Síndrome" : ""}
-                </div>
-                <div className="truncate font-serif text-base font-semibold text-ink">
-                  {activePathology?.name ?? activeSyndrome?.nome ?? "Documento em branco"}
-                </div>
-                {(activePathology?.cid ?? activeSyndrome?.cid) && (
-                  <div className="text-[11px] text-ink-muted">
-                    CID {activePathology?.cid ?? activeSyndrome?.cid}
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={() => setGatePassed(false)}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Trocar
-              </Button>
-            </div>
-
-            {knowledge && (
-              <PathologyCorrelationPanel
-                knowledge={knowledge}
-                profiles={activeProfiles}
-                highSeverity={highSeverity}
-                environment={environment}
-                severity={activePathology?.severity ?? activeSyndrome?.gravidade ?? null}
-              />
-            )}
-
-            <ActionGrid
-              active={action}
-              onSelect={(a) => { setAction(a); setDocChosen(true); }}
-              drafts={drafts}
-              patient={{
-                hasName: !!patientName.trim(),
-                hasWeight: !!weight.trim(),
-                isPediatric,
-                isPregnant,
-                hasAllergies: patient.hasAllergies,
-              }}
             />
           </section>
         ) : (
@@ -1441,6 +1615,11 @@ const Dashboard = () => {
               />
 
               <PatientBlock patient={patient} />
+
+              {/* MÓDULO FANTASMA #1 — Alertas do perfil do paciente + badges clínicos
+                  (Gestante / Lactação / Geriatria ≥60 anos / Nefropatia) */}
+              <PatientProfileFields patient={patient} compact />
+
               <ActionGrid
                 active={action}
                 onSelect={setAction}
@@ -1453,6 +1632,32 @@ const Dashboard = () => {
                   hasAllergies: patient.hasAllergies,
                 }}
               />
+
+              {/* MÓDULO FANTASMA #2 — Card de diluição IV (injetáveis).
+                  Mostra também se já há medicamentos selecionados (ainda que
+                  sem marcação EV), para o médico decidir converter via. */}
+              {showIVDilution && (
+                <IVPrescriberCard
+                  key={`iv-${selected.length}-${action}`}
+                  selected={selected}
+                  medications={allMedications}
+                  patient={{
+                    weightKg: patient.weightKg ?? null,
+                    ageInYears: patient.ageInYears ?? null,
+                    isPediatric,
+                    isPregnant,
+                    hasRenalImpairment: patient.hasRenalImpairment,
+                  }}
+                  onApplyLine={(textoFinal) => {
+                    const nome = textoFinal.split(/[\n—-]/)[0].trim() || "Medicamento EV";
+                    const tempId = -Date.now() - Math.floor(Math.random() * 1000);
+                    setMeds([...selected, { id: tempId, name: nome, text: textoFinal }]);
+                    toast.success("Prescrição IV aplicada");
+                  }}
+                  highlightInjectables={hasInjectables}
+                />
+              )}
+
               <BuilderShell
                 patient={patient}
                 validation={validation}
@@ -1460,15 +1665,28 @@ const Dashboard = () => {
                 onClear={handleClear}
                 reviewLabel={`Revisar e emitir`}
                 safetyPanel={
-                  action === "receita" && (assessment.alerts.length > 0 || selected.length > 0) ? (
-                    <SafetyPanel
-                      assessment={assessment}
-                      overrides={safetyOverride.overrides}
-                      onAcknowledge={handleAcknowledge}
-                      onRequestJustify={(a) => setPendingJustifyAlert(a)}
-                      onRevoke={safetyOverride.revoke}
-                    />
-                  ) : undefined
+                  <>
+                    {/* MÓDULO FANTASMA #3 — Interações medicamentosas ACIMA do
+                        SafetyPanel de segurança clínica tradicional. */}
+                    {showInteractionRisk && (
+                      <InteractionsRiskCard
+                        items={prescItems}
+                        base={interactionsBase}
+                        settings={interactionsSettings}
+                        patient={interactionsPatientCtx}
+                        defaultCollapsed={false}
+                      />
+                    )}
+                    {action === "receita" && (assessment.alerts.length > 0 || selected.length > 0) ? (
+                      <SafetyPanel
+                        assessment={assessment}
+                        overrides={safetyOverride.overrides}
+                        onAcknowledge={handleAcknowledge}
+                        onRequestJustify={(a) => setPendingJustifyAlert(a)}
+                        onRevoke={safetyOverride.revoke}
+                      />
+                    ) : undefined}
+                  </>
                 }
               >
                 {renderEditor()}
@@ -1498,8 +1716,8 @@ const Dashboard = () => {
       </main>
 
 
-      {/* Mobile FAB — só depois da escolha da patologia */}
-      <div className={cnDash("fixed bottom-4 left-4 right-4 z-30 lg:hidden print:hidden", (!gatePassed || !docChosen) && "hidden")}>
+      {/* Mobile FAB — só depois da escolha da patologia (unificado builder + action grid) */}
+      <div className={cnDash("fixed bottom-4 left-4 right-4 z-30 lg:hidden print:hidden", !gatePassed && "hidden")}>
 
         {draftCount > 1 && (
           <div className="mb-2 mx-auto w-fit inline-flex items-center gap-1.5 bg-card border border-ink-soft text-ink-muted text-[10px] font-medium uppercase tracking-editorial px-3 py-1 rounded-full shadow-paper">

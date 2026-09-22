@@ -1,6 +1,6 @@
 import { ColumnDef, NEUTRO, TableDef } from "./schema";
 
-export type Formato = "sql" | "markdown" | "pipe";
+export type Formato = "sql" | "markdown" | "pipe" | "jsonl";
 
 export interface ParsedRow {
   index: number;
@@ -8,6 +8,7 @@ export interface ParsedRow {
   values: string[];
   /** header names, when the source declares them (markdown / sql) */
   headers?: string[];
+  objectData?: Record<string, string>;
   parseError?: string;
 }
 
@@ -69,16 +70,35 @@ export function parsePipe(text: string): ParseResult {
 export function parseMarkdown(text: string): ParseResult {
   const lines = text
     .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !isSeparatorLine(l));
-  if (lines.length === 0) return { rows: [] };
-  const headers = splitPipe(lines[0]);
-  const rows: ParsedRow[] = lines.slice(1).map((line, i) => ({
-    index: i + 1,
-    raw: line,
-    values: splitPipe(line),
-    headers,
-  }));
+    .map((line) => line.trim());
+  const headerIndex = lines.findIndex(
+    (line) => line.includes("|") && !isSeparatorLine(line) && !line.startsWith("#") && !line.startsWith("```"),
+  );
+  if (headerIndex < 0) return { rows: [] };
+  const unescape = (value: string) => value.replace(/\\_/g, "_");
+  const headers = splitPipe(lines[headerIndex]).map(unescape);
+  const rows: ParsedRow[] = [];
+
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    if (line.startsWith("```")) {
+      if (rows.length > 0) break;
+      continue;
+    }
+    if (isSeparatorLine(line)) continue;
+    if (!line.includes("|")) {
+      if (rows.length > 0) break;
+      continue;
+    }
+    rows.push({
+      index: rows.length + 1,
+      raw: line,
+      values: splitPipe(line).map(unescape),
+      headers,
+    });
+  }
+
   return { rows, headers };
 }
 
@@ -173,9 +193,68 @@ export function parseSql(text: string): ParseResult {
   return { rows, headers };
 }
 
+function jsonValueToText(value: unknown): string {
+  if (value === null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value) && value.every((item) => item === null || ["string", "number", "boolean"].includes(typeof item))) {
+    return value.map((item) => item === null ? "" : String(item)).filter(Boolean).join("; ");
+  }
+  throw new Error("Campos JSONL devem conter valores simples ou listas de valores simples.");
+}
+
+/** JSON Lines: um objeto por linha, aceitando título e cercas Markdown do NotebookLM. */
+export function parseJsonl(text: string): ParseResult {
+  const lines = text.split(/\r?\n/);
+  const rows: ParsedRow[] = [];
+  const headers: string[] = [];
+
+  lines.forEach((raw, index) => {
+    const line = raw.trim();
+    if (!line || /^#{1,6}\s/.test(line) || /^```/.test(line)) return;
+
+    let objectData: Record<string, string> | undefined;
+    let parseError: string | undefined;
+    try {
+      const parsed: unknown = JSON.parse(line);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Cada linha deve ser um objeto JSON.");
+      }
+      objectData = Object.fromEntries(
+        Object.entries(parsed).map(([key, value]) => [key, jsonValueToText(value)]),
+      );
+      Object.keys(objectData).forEach((key) => {
+        if (!headers.includes(key)) headers.push(key);
+      });
+    } catch (error) {
+      parseError = error instanceof SyntaxError
+        ? "JSON inválido."
+        : error instanceof Error ? error.message : "JSON inválido.";
+    }
+
+    rows.push({
+      index: index + 1,
+      raw,
+      values: [],
+      headers,
+      objectData,
+      parseError,
+    });
+  });
+
+  rows.forEach((row) => {
+    row.headers = headers;
+    row.values = headers.map((key) => row.objectData?.[key] ?? "");
+  });
+
+  return { rows, headers };
+}
+
 export function parse(text: string, formato: Formato): ParseResult {
   if (formato === "sql") return parseSql(text);
   if (formato === "markdown") return parseMarkdown(text);
+  if (formato === "jsonl") return parseJsonl(text);
   return parsePipe(text);
 }
 
@@ -249,7 +328,14 @@ export function analyze(
     const problems: string[] = [];
     const data: Record<string, string | null> = {};
 
-    if (row.headers && row.headers.length > 0) {
+    if (row.parseError) problems.push(row.parseError);
+
+    if (row.objectData && row.headers && row.headers.length > 0) {
+      row.headers.forEach((h) => {
+        const target = headerMapping.find((m) => m.origem === h)?.destino ?? null;
+        if (target) data[target] = clean(row.objectData?.[h] ?? "");
+      });
+    } else if (row.headers && row.headers.length > 0) {
       if (row.values.length !== row.headers.length) {
         problems.push(
           `Número de campos (${row.values.length}) diferente do esperado (${row.headers.length})`,

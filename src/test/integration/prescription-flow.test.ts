@@ -43,9 +43,12 @@ const mockInsert = vi.fn((payload: Record<string, unknown>) => {
   void payload;
   return { select: mockSelect };
 });
+const mockLogInsert = vi.fn((payload: Record<string, unknown>) => {
+  void payload;
+  return Promise.resolve({ error: null });
+});
 const mockFrom = vi.fn((table: string) => {
-  void table;
-  return { insert: mockInsert };
+  return { insert: table === "log_documentos_clinicos" ? mockLogInsert : mockInsert };
 });
 const mockGetUser = vi.fn((...args: unknown[]) => {
   void args;
@@ -139,6 +142,7 @@ const pedSpec = (overrides: Partial<PedDoseSpec> = {}): PedDoseSpec => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogInsert.mockResolvedValue({ error: null });
 });
 
 /* ============================================================
@@ -464,25 +468,36 @@ describe("(g) geração de documento → contém itens da prescrição", () => {
     expect(mockFrom).toHaveBeenCalledWith("documentos_gerados");
     const insertPayload = mockInsert.mock.calls[0][0] as Record<string, unknown>;
     expect(insertPayload.conteudo_resumido).toContain("Amoxicilina 500mg");
+    expect(mockLogInsert).toHaveBeenCalledWith(expect.objectContaining({
+      id_documento: "doc-123",
+      tipo_documento: "receita_comum",
+      acao: "gerou_pdf",
+    }));
   });
 
-  it("saveGeneratedDocument retorna null (sem lançar exceção) quando o Supabase retorna erro", async () => {
+  it("saveGeneratedDocument propaga erro do Supabase para bloquear a emissão", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
     mockSingle.mockResolvedValue({ data: null, error: { message: "insert failed" } });
 
     const rendered = renderDocument({ bundle: bundle(), paciente, perfil: null, ctx: {}, settings: null });
-    const id = await saveGeneratedDocument({ rendered, id_paciente: "pac-1" });
-
-    expect(id).toBeNull();
+    await expect(saveGeneratedDocument({ rendered, id_paciente: "pac-1" })).rejects.toThrow("insert failed");
+    expect(mockLogInsert).not.toHaveBeenCalled();
   });
 
-  it("saveGeneratedDocument retorna null quando não há usuário autenticado — nunca chama o banco real", async () => {
+  it("saveGeneratedDocument propaga falha do log clínico para bloquear a emissão", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+    mockSingle.mockResolvedValue({ data: { id: "doc-124" }, error: null });
+    mockLogInsert.mockResolvedValue({ error: new Error("log write failed") });
+
+    const rendered = renderDocument({ bundle: bundle(), paciente, perfil: null, ctx: {}, settings: null });
+    await expect(saveGeneratedDocument({ rendered, id_paciente: "pac-1" })).rejects.toThrow("log write failed");
+  });
+
+  it("saveGeneratedDocument propaga sessão ausente sem chamar o banco", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
 
     const rendered = renderDocument({ bundle: bundle(), paciente, perfil: null, ctx: {}, settings: null });
-    const id = await saveGeneratedDocument({ rendered, id_paciente: "pac-1" });
-
-    expect(id).toBeNull();
+    await expect(saveGeneratedDocument({ rendered, id_paciente: "pac-1" })).rejects.toThrow(/Sessão expirada/);
     expect(mockFrom).not.toHaveBeenCalled();
   });
 });

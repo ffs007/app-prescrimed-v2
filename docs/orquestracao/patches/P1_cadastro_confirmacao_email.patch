@@ -1,0 +1,25 @@
+diff --git a/src/pages/Cadastro.tsx b/src/pages/Cadastro.tsx
+index 2012ac0..2453ba2 100644
+--- a/src/pages/Cadastro.tsx
++++ b/src/pages/Cadastro.tsx
+@@ -33,7 +33,7 @@ const Cadastro = () => {
+       return;
+     }
+     setLoading(true);
+-    const { error } = await supabase.auth.signUp({
++    const { data, error } = await supabase.auth.signUp({
+       email,
+       password,
+       options: {
+@@ -48,6 +48,11 @@ const Cadastro = () => {
+         : error.message);
+       return;
+     }
++    if (!data.session) {
++      // Confirmação de e-mail ativa: sem sessão, a navegação cairia em /login sem explicação.
++      toast.success("Conta criada. Enviamos um link de confirmação para o seu e-mail; abra-o para continuar.");
++      return;
++    }
+     toast.success("Conta criada com sucesso!");
+     navigate(destination, { replace: true });
+   };

@@ -1,0 +1,136 @@
+diff --git a/src/lib/sessionCleanup.ts b/src/lib/sessionCleanup.ts
+new file mode 100644
+index 0000000..d1f1421
+--- /dev/null
++++ b/src/lib/sessionCleanup.ts
+@@ -0,0 +1,63 @@
++/**
++ * Isolamento de sessão em dispositivo compartilhado (P0-1).
++ *
++ * O PrescriMed guarda dados clínicos e de configuração no localStorage
++ * (rascunhos de AIH/notificação, histórico de emissões, cabeçalho da
++ * clínica, assinatura etc.). Em PC compartilhado de plantão, esses dados
++ * não podem sobreviver à troca de usuário.
++ *
++ * Regras:
++ *  - NÃO toca nas chaves do Supabase Auth (sb-*): o signOut cuida delas.
++ *  - Preferências de UI sem dado clínico ficam em KEEP_KEYS.
++ */
++const OWNER_KEY = "prescrimed:session-owner";
++
++const APP_KEY_PREFIXES = ["prescrimed", "protocolo-sessao:"];
++
++const APP_KEYS_EXACT = new Set([
++  "protocolos_recentes",
++  "clinic-info",
++  "signature-config",
++  "custom-medications",
++  "custom-templates",
++]);
++
++const KEEP_KEYS = new Set(["prescrimed:install-banner-dismissed"]);
++
++export function isAppDataKey(key: string): boolean {
++  if (KEEP_KEYS.has(key)) return false;
++  if (APP_KEYS_EXACT.has(key)) return true;
++  return APP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix));
++}
++
++/** Remove todos os dados locais do app (inclui o marcador de dono). */
++export function clearLocalAppData(): void {
++  try {
++    const keys: string[] = [];
++    for (let i = 0; i < localStorage.length; i++) {
++      const key = localStorage.key(i);
++      if (key && isAppDataKey(key)) keys.push(key);
++    }
++    keys.forEach((key) => localStorage.removeItem(key));
++  } catch {
++    // storage indisponível: nunca bloquear o fluxo de auth
++  }
++}
++
++/**
++ * Garante que os dados locais pertencem ao usuário autenticado.
++ * Se o dono registrado for outro (ou não houver dono registrado),
++ * limpa tudo e registra o novo dono. Retorna true se limpou.
++ * Cobre o caso "médico A fechou a aba sem sair e médico B entrou".
++ */
++export function ensureLocalDataOwner(userId: string): boolean {
++  try {
++    const owner = localStorage.getItem(OWNER_KEY);
++    if (owner === userId) return false;
++    clearLocalAppData();
++    localStorage.setItem(OWNER_KEY, userId);
++    return true;
++  } catch {
++    return false;
++  }
++}
+diff --git a/src/components/providers/AuthProvider.tsx b/src/components/providers/AuthProvider.tsx
+index 8aa2cbc..aeca8d7 100644
+--- a/src/components/providers/AuthProvider.tsx
++++ b/src/components/providers/AuthProvider.tsx
+@@ -1,6 +1,8 @@
+ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
++import { useQueryClient } from "@tanstack/react-query";
+ import { supabase } from "@/integrations/supabase/client";
+ import type { Session, User } from "@supabase/supabase-js";
++import { clearLocalAppData, ensureLocalDataOwner } from "@/lib/sessionCleanup";
+ 
+ type AuthContextValue = {
+   session: Session | null;
+@@ -19,22 +21,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+   const [loading, setLoading] = useState(true);
+   const [roles, setRoles] = useState<string[]>([]);
+   const [rolesLoading, setRolesLoading] = useState(true);
++  const queryClient = useQueryClient();
+ 
+   useEffect(() => {
+     // 1) Listener primeiro (evita perder eventos), sem chamadas assíncronas dentro do callback
+-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
++    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
++      // Isolamento de sessão (P0-1): nada do usuário anterior sobrevive.
++      if (event === "SIGNED_OUT") {
++        queryClient.clear();
++        clearLocalAppData();
++      } else if (s?.user?.id && ensureLocalDataOwner(s.user.id)) {
++        queryClient.clear();
++      }
+       setSession(s);
+       setLoading(false);
+     });
+ 
+     // 2) Sessão existente
+     supabase.auth.getSession().then(({ data: { session: s } }) => {
++      if (s?.user?.id && ensureLocalDataOwner(s.user.id)) queryClient.clear();
+       setSession(s);
+       setLoading(false);
+     });
+ 
+     return () => subscription.unsubscribe();
+-  }, []);
++  }, [queryClient]);
+ 
+   const userId = session?.user?.id ?? null;
+ 
+@@ -66,10 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+     rolesLoading,
+     isAdmin: roles.includes("admin"),
+     signOut: async () => {
+-      const { error } = await supabase.auth.signOut();
+-      if (error) throw error;
++      try {
++        const { error } = await supabase.auth.signOut();
++        if (error) throw error;
++      } finally {
++        // Limpa mesmo se o signOut remoto falhar (rede instável no plantão).
++        queryClient.clear();
++        clearLocalAppData();
++      }
+     },
+-  }), [session, loading, roles, rolesLoading]);
++  }), [session, loading, roles, rolesLoading, queryClient]);
+ 
+   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+ }

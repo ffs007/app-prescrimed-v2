@@ -1,0 +1,17 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 1,
+  "promptNome": "condicoes_e_ddx",
+  "promptInputHash": "",
+  "instituicaoId": null,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 01: Condições clínicas + refinamentos + DDX. Preencher com sintomas, síndromes, patologias, queixas e hipóteses; depois self-join DDX e refinamento. VALIDAR ANTES DE SYNC: npm run curadoria:validar --arquivo chunks/chunk_01.json"
+  },
+  "tabelas": {
+    "condicoes_clinicas": [],
+    "condicao_ddx": [],
+    "condicao_refinamentos": []
+  }
+}
