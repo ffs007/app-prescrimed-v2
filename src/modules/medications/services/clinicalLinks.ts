@@ -295,6 +295,6 @@ export async function applyLinkAction(id: string, action: LinkAction, note?: str
     patch.revisado_por = auth.user?.id ?? null;
     patch.revisado_em = new Date().toISOString();
   }
-  const { error } = await supabase.from("clinical_condition_medication").update(patch).eq("id", id);
+  const { error } = await supabase.from("clinical_condition_medication").update(patch as never).eq("id", id);
   if (error) throw error;
 }

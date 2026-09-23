@@ -1,6 +1,7 @@
 // Etapa 20 — Hook das configurações de documentos.
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 import type { DocumentosSettings } from "../lib/types";
 
 export function useDocumentsSettings() {
@@ -9,8 +10,11 @@ export function useDocumentsSettings() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("documentos_settings").select("*").limit(1).maybeSingle();
+    if (error) {
+      reportError("useDocumentsSettings.load", error, "Não foi possível carregar as configurações de documentos.");
+    }
     setSettings(data); setLoading(false);
   }, []);
 

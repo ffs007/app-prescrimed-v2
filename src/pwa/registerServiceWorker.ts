@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/reportError";
 /**
  * Registro único e protegido do service worker.
  * Nunca registra em dev, iframe ou pré-visualização da Lovable.
@@ -45,7 +46,7 @@ export async function registerServiceWorker(): Promise<void> {
   try {
     const { registerSW } = await import("virtual:pwa-register");
     registerSW({ immediate: true });
-  } catch {
-    // registro do modo offline é opcional
+  } catch (error) {
+    reportError("pwa/registerServiceWorker", error);
   }
 }

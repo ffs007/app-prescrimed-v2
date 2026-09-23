@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText } from "lucide-react";
+import { reportError } from "@/lib/reportError";
 
 interface DocRow {
   id: string;
@@ -21,11 +22,12 @@ export default function HistoryPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("documentos_gerados")
         .select("id, titulo, tipo, status, data_hora, id_paciente")
         .order("data_hora", { ascending: false })
         .limit(100);
+      if (error) reportError("HistoryPage", error, "Não foi possível carregar o histórico de documentos.");
       setItems((data ?? []) as DocRow[]);
       setLoading(false);
     })();

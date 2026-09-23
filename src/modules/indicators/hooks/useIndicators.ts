@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 
 export interface IndicatorCounts {
   prescricoes: number;
@@ -39,16 +40,21 @@ export const useIndicators = () => {
       ] = await Promise.all([
         head("documentos_gerados"),
         head("historico_alertas_iv"),
-        headEq("historico_alertas_iv", "gravidade", "alta"),
-        headEq("historico_alertas_iv", "gravidade", "media"),
+        headEq("historico_alertas_iv", "gravidade", "blocker"),
+        headEq("historico_alertas_iv", "gravidade", "warning"),
         head("historico_revisao_seguranca_iv"),
         head("documento_links_publicos"),
         supabase.from("documento_links_publicos").select("*", { count: "exact", head: true }).not("data_envio", "is", null),
         headEq("testes_clinicos", "status", "aprovado"),
         headEq("testes_clinicos", "status", "reprovado"),
         headEq("testes_clinicos", "status", "pendente"),
-        supabase.from("eventos_beta_log").select("*", { count: "exact", head: true }).eq("tipo_evento", "prescricao_criada"),
+        head("prescricoes_historico"),
       ]);
+
+      const failed = [docs, alertas, alCrit, alMed, ivRev, links, linksEnv, tApr, tRep, tPend, evPresc].find((r) => r.error);
+      if (failed?.error) {
+        reportError("useIndicators", failed.error, "Alguns indicadores não puderam ser carregados; os valores exibidos podem estar incompletos.");
+      }
 
       setCounts({
         prescricoes: evPresc.count ?? 0,
@@ -64,6 +70,8 @@ export const useIndicators = () => {
         testes_reprovados: tRep.count ?? 0,
         testes_pendentes: tPend.count ?? 0,
       });
+    } catch (error) {
+      reportError("useIndicators", error, "Não foi possível carregar os indicadores.");
     } finally {
       setLoading(false);
     }

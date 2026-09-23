@@ -1,0 +1,16 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 2,
+  "promptNome": "exames_complementares",
+  "promptInputHash": "",
+  "instituicaoId": null,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 02: Exames complementares (14 essenciais da seed mínima + todos os tipos) + junção condicao_exames com colunas semânticas obrigatórias (categoria justificativa impacto sequencia disponibilidade perfis_risco parametros_medicao)."
+  },
+  "tabelas": {
+    "exames_complementares": [],
+    "condicao_exames": []
+  }
+}

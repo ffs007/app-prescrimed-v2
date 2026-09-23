@@ -56,7 +56,6 @@ export const KIND_LABEL: Record<ResultKind, string> = {
 
 export const NAV_ENTRIES: SearchEntry[] = [
   { id: "nav-nova", kind: "acao", tier: "essencial", title: "Nova prescrição", to: "/app/prescricao/nova", keywords: "prescrever receita nova prescricao documento" },
-  { id: "nav-pacientes", kind: "acao", tier: "essencial", title: "Pacientes", to: "/app/pacientes", keywords: "paciente cadastro" },
   { id: "nav-modelos", kind: "acao", tier: "essencial", title: "Modelos rápidos", to: "/app/modelos", keywords: "modelo template rapido" },
   { id: "nav-medicamentos", kind: "acao", tier: "essencial", title: "Medicamentos", to: "/app/medicamentos", keywords: "farmaco medicamento dose bula" },
   { id: "nav-patologias", kind: "acao", tier: "essencial", title: "Minhas patologias", to: "/app/patologias", keywords: "patologia personalizacao favoritos" },
@@ -65,6 +64,7 @@ export const NAV_ENTRIES: SearchEntry[] = [
   { id: "nav-documentos", kind: "acao", tier: "essencial", title: "Documentos", to: "/app/documentos", keywords: "atestado relatorio laudo encaminhamento" },
   { id: "nav-historico", kind: "acao", tier: "essencial", title: "Histórico", to: "/app/historico", keywords: "historico emissoes" },
   { id: "nav-hub", kind: "acao", tier: "essencial", title: "Protocolos & Escores", to: "/app/protocolos-escores", keywords: "hub protocolo escore trial fluxograma" },
+  { id: "nav-escores", kind: "acao", tier: "essencial", title: "Calculadoras de escores", to: "/app/escores", keywords: "escore calculadora heart timi grace sofa news2 wells meld apache" },
   { id: "nav-trauma", kind: "acao", tier: "essencial", title: "Escores de trauma", to: "/app/escores-trauma", keywords: "rts iss triss trauma" },
   { id: "nav-atualizacoes", kind: "acao", tier: "essencial", title: "Atualizações clínicas", to: "/app/atualizacoes", keywords: "ia atualizacoes diretriz evidencia" },
   { id: "nav-indicadores", kind: "acao", tier: "essencial", title: "Indicadores", to: "/app/indicadores", keywords: "indicador qualidade metrica" },

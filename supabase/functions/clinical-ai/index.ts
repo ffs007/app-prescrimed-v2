@@ -166,9 +166,10 @@ async function searchLibrary(tema: string, lovableKey: string | undefined) {
     if (!resp.ok) {
       const detail = await resp.text();
       if (resp.status === 401 && detail.includes("insufficient_quota")) {
-        return { error: "perplexity-sem-creditos", detail } as const;
+        return { error: "perplexity-sem-creditos" } as const;
       }
-      return { error: "perplexity-erro", status: resp.status, detail } as const;
+      console.error("clinical-ai: perplexity", resp.status, detail.slice(0, 500));
+      return { error: "perplexity-erro", status: resp.status } as const;
     }
     const data = await resp.json();
     const content = data?.choices?.[0]?.message?.content ?? "{}";
@@ -177,7 +178,8 @@ async function searchLibrary(tema: string, lovableKey: string | undefined) {
       const parsed = JSON.parse(content);
       return { itens: parsed.itens ?? [], citations, fonte: "perplexity" } as const;
     } catch {
-      return { error: "resposta-invalida", detail: String(content).slice(0, 500) } as const;
+      console.error("clinical-ai: resposta-invalida", String(content).slice(0, 500));
+      return { error: "resposta-invalida" } as const;
     }
   }
 
@@ -202,7 +204,10 @@ async function searchLibrary(tema: string, lovableKey: string | undefined) {
   });
   if (resp.status === 429) return { error: "rate-limited" } as const;
   if (resp.status === 402) return { error: "credits-exhausted" } as const;
-  if (!resp.ok) return { error: "ai-error", detail: await resp.text() } as const;
+  if (!resp.ok) {
+    console.error("clinical-ai: ai-error", (await resp.text()).slice(0, 500));
+    return { error: "ai-error" } as const;
+  }
   const data = await resp.json();
   const args = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
   try {
@@ -276,12 +281,16 @@ Deno.serve(async (req) => {
       }),
     });
   } catch (e) {
-    return json(502, { error: "ai-unreachable", detail: String(e) });
+    console.error("clinical-ai: ai-unreachable", e);
+    return json(502, { error: "ai-unreachable" });
   }
 
   if (aiResp.status === 429) return json(429, { error: "rate-limited" });
   if (aiResp.status === 402) return json(402, { error: "credits-exhausted" });
-  if (!aiResp.ok) return json(502, { error: "ai-error", detail: await aiResp.text() });
+  if (!aiResp.ok) {
+    console.error("clinical-ai: ai-error", (await aiResp.text()).slice(0, 500));
+    return json(502, { error: "ai-error" });
+  }
 
   const data = await aiResp.json();
   const args = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;

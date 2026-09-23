@@ -5,8 +5,11 @@ import {
   BarChart3,
   BedDouble,
   BookOpen,
+  Calculator,
   ChevronDown,
   ClipboardCheck,
+  Clock,
+  ContactRound,
   FilePlus2,
   FileText,
   FlaskConical,
@@ -20,8 +23,8 @@ import {
   Sparkles,
   Stethoscope,
   Upload,
-  Users,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +44,7 @@ interface NavigationItem {
   url: string;
   icon: ComponentType<{ className?: string }>;
   end?: boolean;
+  comingSoon?: boolean;
 }
 
 const groups: Array<{ label: string; items: NavigationItem[] }> = [
@@ -49,7 +53,12 @@ const groups: Array<{ label: string; items: NavigationItem[] }> = [
     items: [
       { title: "Início", url: "/app", icon: Home, end: true },
       { title: "Nova Prescrição", url: "/app/prescricao/nova", icon: FilePlus2 },
-      { title: "Pacientes", url: "/app/pacientes", icon: Users },
+      {
+        title: "Pacientes / Prontuário Longitudinal",
+        url: "/app/pacientes",
+        icon: ContactRound,
+        comingSoon: true,
+      },
     ],
   },
   {
@@ -69,6 +78,7 @@ const groups: Array<{ label: string; items: NavigationItem[] }> = [
       { title: "Minhas Patologias", url: "/app/patologias", icon: Stethoscope },
       { title: "Modelos Rápidos", url: "/app/modelos", icon: Sparkles },
       { title: "Protocolos & Escores", url: "/app/protocolos-escores", icon: BookOpen },
+      { title: "Calculadoras de escores", url: "/app/escores", icon: Calculator },
     ],
   },
   {
@@ -99,6 +109,31 @@ const adminItems: NavigationItem[] = [
   { title: "Testes Clínicos", url: "/app/testes-clinicos", icon: FlaskConical },
 ];
 
+function NavButton({ item, collapsed }: { item: NavigationItem; collapsed: boolean }) {
+  if (collapsed) {
+    return (
+      <NavLink to={item.url} end={item.end}>
+        <item.icon className="h-4 w-4" />
+        <span>{item.title}</span>
+      </NavLink>
+    );
+  }
+  return (
+    <NavLink to={item.url} end={item.end} className="flex w-full items-center gap-2 justify-between">
+      <span className="flex items-center gap-2 min-w-0">
+        <item.icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{item.title}</span>
+      </span>
+      {item.comingSoon && (
+        <Badge variant="outline" className="shrink-0 text-[9px] px-1.5 py-0 text-ink-faint border-ink-soft/80">
+          <Clock className="h-2.5 w-2.5 mr-0.5" />
+          Em breve
+        </Badge>
+      )}
+    </NavLink>
+  );
+}
+
 function NavigationGroup({ label, items, collapsed }: { label: string; items: NavigationItem[]; collapsed: boolean }) {
   const { pathname } = useLocation();
   const containsActive = items.some((item) =>
@@ -121,10 +156,7 @@ function NavigationGroup({ label, items, collapsed }: { label: string; items: Na
             {items.map((item) => (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={isActive(item)} tooltip={item.title}>
-                  <NavLink to={item.url} end={item.end}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </NavLink>
+                  <NavButton item={item} collapsed={true} />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -149,10 +181,7 @@ function NavigationGroup({ label, items, collapsed }: { label: string; items: Na
               {items.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item)}>
-                    <NavLink to={item.url} end={item.end}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
+                    <NavButton item={item} collapsed={false} />
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

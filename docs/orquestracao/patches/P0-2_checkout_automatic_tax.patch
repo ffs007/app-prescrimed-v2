@@ -1,0 +1,25 @@
+diff --git a/supabase/functions/create-checkout/index.ts b/supabase/functions/create-checkout/index.ts
+index 6291510..2957b65 100644
+--- a/supabase/functions/create-checkout/index.ts
++++ b/supabase/functions/create-checkout/index.ts
+@@ -102,13 +102,19 @@ async function createCheckoutSession(options: {
+     }
+   }
+ 
++  const automaticTax = Deno.env.get("STRIPE_AUTOMATIC_TAX") !== "false";
++
+   const session = await stripe.checkout.sessions.create({
+     line_items: [{ price: stripePrice.id, quantity: options.quantity || 1 }],
+     mode: isRecurring ? "subscription" : "payment",
+     ui_mode: "embedded_page",
+     return_url: options.returnUrl,
+-    automatic_tax: { enabled: true },
++    // P0-2: com customer existente e automatic_tax, o Stripe exige endereço
++    // no Customer ou customer_update.address; sem isso a sessão retorna erro.
++    // STRIPE_AUTOMATIC_TAX=false desliga o imposto automático (conta sem Stripe Tax).
++    ...(automaticTax && { automatic_tax: { enabled: true } }),
+     ...(customerId && { customer: customerId }),
++    ...(customerId && automaticTax && { customer_update: { address: "auto" as const } }),
+     ...(discounts && { discounts }),
+     ...(!isRecurring && { payment_intent_data: { description: productDescription } }),
+     ...(options.userId && {

@@ -90,7 +90,10 @@ async function callOpenRouter(key: string, model: string, messages: unknown[]) {
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages }),
   });
-  if (!resp.ok) return { error: "openrouter-erro", status: resp.status, detail: (await resp.text()).slice(0, 500) } as const;
+  if (!resp.ok) {
+    console.error("ai-assist: openrouter", resp.status, (await resp.text()).slice(0, 500));
+    return { error: "openrouter-erro", status: resp.status } as const;
+  }
   const data = await resp.json();
   return { texto: data?.choices?.[0]?.message?.content ?? "", fonte: "openrouter", modelo: model } as const;
 }
@@ -103,7 +106,10 @@ async function callGateway(key: string, messages: unknown[]) {
   });
   if (resp.status === 429) return { error: "rate-limited" } as const;
   if (resp.status === 402) return { error: "credits-exhausted" } as const;
-  if (!resp.ok) return { error: "ai-error", detail: (await resp.text()).slice(0, 500) } as const;
+  if (!resp.ok) {
+    console.error("ai-assist: ai-error", (await resp.text()).slice(0, 500));
+    return { error: "ai-error" } as const;
+  }
   const data = await resp.json();
   return { texto: data?.choices?.[0]?.message?.content ?? "", fonte: "gateway", modelo: "google/gemini-3.8-flash" } as const;
 }
@@ -121,7 +127,10 @@ async function searchPerplexity(key: string, system: string, user: string, schem
       ...(schema ? { response_format: { type: "json_schema", json_schema: { name: "resultado", schema } } } : {}),
     }),
   });
-  if (!resp.ok) return { error: "perplexity-erro", status: resp.status, detail: (await resp.text()).slice(0, 500) } as const;
+  if (!resp.ok) {
+    console.error("ai-assist: perplexity", resp.status, (await resp.text()).slice(0, 500));
+    return { error: "perplexity-erro", status: resp.status } as const;
+  }
   const data = await resp.json();
   return {
     texto: data?.choices?.[0]?.message?.content ?? "",
@@ -163,6 +172,14 @@ Deno.serve(async (req) => {
   const perplexityKey = (cred?.perplexity_key ?? "").trim() || (Deno.env.get("PERPLEXITY_API_KEY") ?? "");
   const modelo = (cred?.modelo_preferido ?? "").trim() || "anthropic/claude-sonnet-4";
   const lovableKey = Deno.env.get("LOVABLE_API_KEY") ?? "";
+
+  // Chatbot e atualizações por IA são recursos Pro (1.9). "documento" e
+  // "validar_template" não são — ficam livres. Checado aqui, antes de
+  // qualquer chamada paga a provedor, não só escondido no front.
+  if (body.modo === "chat" || body.modo === "atualizacoes") {
+    const { data: assinaturaAtiva } = await admin.rpc("has_active_subscription", { user_uuid: user.id });
+    if (!assinaturaAtiva) return json(403, { error: "assinatura-necessaria" });
+  }
 
   const run = async (system: string, userContent: string, preferSearch = false) => {
     if (preferSearch && perplexityKey) {
@@ -251,7 +268,10 @@ Deno.serve(async (req) => {
       });
       if (resp.status === 429) return json(429, { error: "rate-limited" });
       if (resp.status === 402) return json(402, { error: "credits-exhausted" });
-      if (!resp.ok) return json(502, { error: "ai-error", detail: (await resp.text()).slice(0, 500) });
+      if (!resp.ok) {
+        console.error("ai-assist: ai-error", (await resp.text()).slice(0, 500));
+        return json(502, { error: "ai-error" });
+      }
       const data = await resp.json();
       const args = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
       try {
@@ -273,6 +293,7 @@ Aponte: campos obrigatórios ausentes, elementos em desacordo, riscos de recusa 
 
     return json(400, { error: "modo-invalido" });
   } catch (e) {
-    return json(502, { error: "ia-indisponivel", detail: String(e).slice(0, 300) });
+    console.error("ai-assist: ia-indisponivel", e);
+    return json(502, { error: "ia-indisponivel" });
   }
 });

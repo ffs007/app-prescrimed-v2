@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TesteStatusV2 } from "../lib/status";
+import { reportError } from "@/lib/reportError";
 
 export type TesteClinicoV2 = {
   id: string;
@@ -56,7 +57,7 @@ export function useTestesClinicosV2() {
   ) => {
     if (config && !config.gerar_log_execucao) return;
     const { data: userData } = await supabase.auth.getUser();
-    await supabase.from("log_testes_clinicos").insert({
+    const { error } = await supabase.from("log_testes_clinicos").insert({
       teste_id: t.id,
       codigo_teste: t.codigo,
       nome_teste: t.nome_teste,
@@ -69,6 +70,7 @@ export function useTestesClinicosV2() {
       observacao,
       usuario_responsavel: userData.user?.id ?? null,
     });
+    if (error) reportError("useTestesClinicosV2.logAction", error, "A execução do teste não foi registrada no log.");
   }, [config]);
 
   const setResult = useCallback(async (
@@ -101,7 +103,11 @@ export function useTestesClinicosV2() {
 
   const updateConfig = useCallback(async (patch: Partial<TestesConfig>) => {
     const { data: userData } = await supabase.auth.getUser();
-    await supabase.from("testes_clinicos_configs").update({ ...patch, updated_by: userData.user?.id ?? null }).eq("id", 1);
+    const { error } = await supabase.from("testes_clinicos_configs").update({ ...patch, updated_by: userData.user?.id ?? null }).eq("id", 1);
+    if (error) {
+      reportError("useTestesClinicosV2.updateConfig", error, "Não foi possível salvar a configuração dos testes.");
+      return;
+    }
     await load();
   }, [load]);
 

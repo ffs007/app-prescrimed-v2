@@ -34,7 +34,11 @@ Deno.serve(async (req) => {
     if (!link) return json({ ok: false, reason: "nao_encontrado" }, 200);
     if (link.status === "revogado") return json({ ok: false, reason: "revogado" }, 200);
     if (new Date(link.expira_em) < new Date()) {
-      await admin.from("documento_links_publicos").update({ status: "expirado" }).eq("id", link.id);
+      const { error: expireError } = await admin
+        .from("documento_links_publicos")
+        .update({ status: "expirado" })
+        .eq("id", link.id);
+      if (expireError) console.error("public-document-link: falha ao marcar link expirado", expireError);
       return json({ ok: false, reason: "expirado" }, 200);
     }
 
@@ -62,15 +66,33 @@ Deno.serve(async (req) => {
       profissional = perfil?.nome_profissional ?? null;
     }
 
-    // Log access + increment counter (fire and forget)
-    admin.from("link_acessos_log").insert({
-      id_link: link.id,
-      ip: req.headers.get("x-forwarded-for") ?? null,
-      user_agent: req.headers.get("user-agent") ?? null,
-    }).then();
-    admin.from("documento_links_publicos").update({
-      numero_acessos: link.numero_acessos + 1,
-    }).eq("id", link.id).then();
+    // Registro de acesso: falhas não impedem a abertura do documento, mas ficam nos logs da função.
+    const [accessLog, counter] = await Promise.all([
+      admin.from("link_acessos_log").insert({
+        id_link: link.id,
+        ip: req.headers.get("x-forwarded-for") ?? null,
+        user_agent: req.headers.get("user-agent") ?? null,
+      }),
+      admin.from("documento_links_publicos").update({
+        numero_acessos: link.numero_acessos + 1,
+      }).eq("id", link.id),
+    ]);
+    if (accessLog.error) console.error("public-document-link: falha ao registrar acesso", accessLog.error);
+    if (counter.error) console.error("public-document-link: falha ao incrementar acessos", counter.error);
+
+    // arquivo_pdf_url guarda o caminho no bucket privado; a URL assinada expira em 5 minutos.
+    let pdfUrl: string | null = null;
+    if (doc.arquivo_pdf_url) {
+      if (/^https?:\/\//i.test(doc.arquivo_pdf_url)) {
+        pdfUrl = doc.arquivo_pdf_url;
+      } else {
+        const { data: signed, error: signError } = await admin.storage
+          .from("documentos-pdf")
+          .createSignedUrl(doc.arquivo_pdf_url, 300);
+        if (signError) console.error("public-document-link: falha ao assinar URL do PDF", signError);
+        pdfUrl = signed?.signedUrl ?? null;
+      }
+    }
 
     return json({
       ok: true,
@@ -80,11 +102,12 @@ Deno.serve(async (req) => {
         paciente,
         profissional,
         data: doc.data_hora,
-        pdf_url: doc.arquivo_pdf_url,
+        pdf_url: pdfUrl,
       },
     }, 200);
   } catch (e) {
-    return json({ ok: false, reason: "nao_encontrado", error: String(e) }, 200);
+    console.error("public-document-link: erro inesperado", e);
+    return json({ ok: false, reason: "erro_interno" }, 500);
   }
 });
 

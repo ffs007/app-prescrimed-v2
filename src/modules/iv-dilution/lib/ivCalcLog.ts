@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { IVCalcInput, IVCalcResult } from "./ivCalc";
 import type { IVMedication } from "../IVDilutionAdminPage";
+import { reportError } from "@/lib/reportError";
 
 export async function logIVCalc(params: {
   med: IVMedication;
@@ -13,7 +14,7 @@ export async function logIVCalc(params: {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("log_calculos_iv").insert({
+    const { error: writeError } = await supabase.from("log_calculos_iv").insert({
       usuario_responsavel: user.id,
       id_prescricao: params.prescricaoId ?? null,
       id_paciente: params.pacienteId ?? null,
@@ -33,7 +34,8 @@ export async function logIVCalc(params: {
       alertas_gerados: params.result.alerts as any,
       evento: params.evento,
     } as any);
-  } catch {
-    // silencioso
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/iv-dilution/lib/ivCalcLog", error);
   }
 }

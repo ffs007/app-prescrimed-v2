@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 
 export type UsageEventType =
   | "sessao_inicio"
@@ -36,14 +37,15 @@ export async function logUsageEvent(input: UsageEventInput): Promise<void> {
     if (Date.now() - last < 5000) return;
     recent.set(key, Date.now());
 
-    await supabase.from("uso_eventos").insert({
+    const { error: writeError } = await supabase.from("uso_eventos").insert({
       user_id: userId,
       tipo: input.tipo,
       rota: input.rota ?? null,
       recurso: input.recurso ?? null,
       detalhe: (input.detalhe ?? {}) as never,
     });
-  } catch {
-    // registro de uso nunca deve quebrar a experiência
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/usage/usageClient", error);
   }
 }

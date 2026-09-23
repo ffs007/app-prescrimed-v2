@@ -1,0 +1,17 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 5,
+  "promptNome": "modelos_documento",
+  "promptInputHash": "",
+  "instituicaoId": null,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 05: Modelos documento (22 tipos curadoria_tipo_documento_clinico ENUM) + campos customizados por modelo + junção condicao_modelos_documento com preenchimento_automatico e ordem_apresentação."
+  },
+  "tabelas": {
+    "modelos_documento": [],
+    "modelo_documento_campos": [],
+    "condicao_modelos_documento": []
+  }
+}

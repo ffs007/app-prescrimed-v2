@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/providers/AuthProvider";
 import type { AuditSeverity } from "../lib/auditActions";
+import { reportError } from "@/lib/reportError";
+import { sanitizeAuditDetails } from "../lib/sanitizeAudit";
 
 export interface AuditEntry {
   id: string;
@@ -25,7 +27,8 @@ async function publicIp(): Promise<string | null> {
     const res = await fetch("https://api.ipify.org?format=json", { cache: "force-cache" });
     const json = (await res.json()) as { ip?: string };
     cachedIp = json.ip ?? null;
-  } catch {
+  } catch (error) {
+    reportError("useAuditLog.publicIp", error);
     cachedIp = null;
   }
   return cachedIp;
@@ -47,19 +50,24 @@ export function useAuditLogger() {
   return useCallback(
     async (payload: AuditPayload) => {
       if (!user) return;
-      const ip = await publicIp();
-      await supabase.from("audit_log_critico").insert({
-        user_id: user.id,
-        user_email: user.email ?? null,
-        acao: payload.acao,
-        modulo: payload.modulo,
-        entidade: payload.entidade ?? null,
-        entidade_id: payload.entidadeId ?? null,
-        severidade: payload.severidade ?? "info",
-        ip,
-        user_agent: navigator.userAgent.slice(0, 300),
-        detalhes: (payload.detalhes ?? {}) as never,
-      });
+      try {
+        const ip = await publicIp();
+        const { error: writeError } = await supabase.from("audit_log_critico").insert({
+          user_id: user.id,
+          user_email: user.email ?? null,
+          acao: payload.acao,
+          modulo: payload.modulo,
+          entidade: payload.entidade ?? null,
+          entidade_id: payload.entidadeId ?? null,
+          severidade: payload.severidade ?? "info",
+          ip,
+          user_agent: navigator.userAgent.slice(0, 300),
+          detalhes: sanitizeAuditDetails(payload.detalhes ?? {}) as never,
+        });
+        if (writeError) throw writeError;
+      } catch (error) {
+        reportError("useAuditLog", error, "Não foi possível registrar esta ação na trilha de auditoria.");
+      }
     },
     [user],
   );

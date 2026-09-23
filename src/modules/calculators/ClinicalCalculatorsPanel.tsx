@@ -5,7 +5,8 @@
  * do paciente e medicamentos já escolhidos) e, abaixo, todo o catálogo.
  * O resultado é sempre revisável antes de virar texto do documento.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Calculator, ChevronDown, Lightbulb, Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
   type ResultTone,
 } from "./lib/calculators";
 import { suggestCalculators, type SuggestionContext } from "./lib/suggestions";
+import { hasServerScore, verifyAndAuditScore, type ScoreContext } from "@/modules/scores/lib/serverScoreCheck";
 
 const cn = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ");
 
@@ -38,6 +40,8 @@ interface Props extends SuggestionContext {
   onUseResult?: (title: string, text: string) => void;
   weightKg?: number | null;
   sex?: string;
+  /** Atendimento em curso; agrupa a auditoria com os demais escores do mesmo atendimento. */
+  atendimentoId?: string;
 }
 
 interface CardProps {
@@ -46,10 +50,12 @@ interface CardProps {
   autofill: Record<string, string>;
   onUseResult?: (title: string, text: string) => void;
   defaultOpen?: boolean;
+  scoreContext: ScoreContext;
 }
 
-const CalculatorCard = ({ def, reason, autofill, onUseResult, defaultOpen }: CardProps) => {
+const CalculatorCard = ({ def, reason, autofill, onUseResult, defaultOpen, scoreContext }: CardProps) => {
   const [open, setOpen] = useState(!!defaultOpen);
+  const [auditing, setAuditing] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(() => ({ ...autofill }));
 
   const result = useMemo(() => {
@@ -57,10 +63,45 @@ const CalculatorCard = ({ def, reason, autofill, onUseResult, defaultOpen }: Car
     for (const f of def.fields) filled[f.key] = values[f.key] ?? autofill[f.key] ?? "";
     try {
       return def.compute(filled);
-    } catch {
+    } catch (error) {
+      console.error(`Falha ao calcular ${def.short}`, error);
       return null;
     }
   }, [def, values, autofill]);
+
+  /** Escores com função SQL equivalente são conferidos e auditados no servidor antes de entrar no documento. */
+  const handleUseResult = async () => {
+    if (!result || !onUseResult) return;
+    if (!hasServerScore(def.id)) {
+      onUseResult(def.short, result.text);
+      return;
+    }
+    const filled: Record<string, string> = {};
+    for (const f of def.fields) filled[f.key] = values[f.key] ?? autofill[f.key] ?? "";
+    setAuditing(true);
+    try {
+      const check = await verifyAndAuditScore(def.id, filled, scoreContext, result.headline);
+      if (check.kind === "rejected") {
+        toast.error(`${def.short}: cálculo recusado pelo servidor`, { description: check.message });
+        return;
+      }
+      if (check.kind === "divergent") {
+        toast.error(`${def.short}: divergência entre o cálculo local e o servidor`, {
+          description: `Local: ${check.localTotal} ponto(s) · Servidor: ${check.serverTotal} ponto(s). Revise as entradas.`,
+        });
+        return;
+      }
+      if (check.kind === "ok") toast.success(`${def.short} registrado na auditoria de escores`);
+      onUseResult(def.short, result.text);
+    } catch (error) {
+      console.error(`Falha ao auditar ${def.short}`, error);
+      toast.error(`${def.short}: não foi possível registrar na auditoria`, {
+        description: "O resultado não foi inserido no documento. Tente novamente.",
+      });
+    } finally {
+      setAuditing(false);
+    }
+  };
 
   return (
     <div className="rounded-md border border-ink-soft bg-card">
@@ -137,10 +178,11 @@ const CalculatorCard = ({ def, reason, autofill, onUseResult, defaultOpen }: Car
                   variant="outline"
                   size="sm"
                   className="mt-2.5 h-7 gap-1 px-2 text-[11px]"
-                  onClick={() => onUseResult(def.short, result.text)}
+                  disabled={auditing}
+                  onClick={() => void handleUseResult()}
                 >
                   <Plus className="h-3 w-3" />
-                  Usar no documento
+                  {auditing ? "Registrando…" : "Usar no documento"}
                 </Button>
               )}
             </div>
@@ -159,8 +201,10 @@ const CalculatorCard = ({ def, reason, autofill, onUseResult, defaultOpen }: Car
   );
 };
 
-const ClinicalCalculatorsPanel = ({ onUseResult, weightKg, sex, ...ctx }: Props) => {
+const ClinicalCalculatorsPanel = ({ onUseResult, weightKg, sex, atendimentoId: providedAtendimentoId, ...ctx }: Props) => {
   const [term, setTerm] = useState("");
+  const generatedAtendimentoId = useRef(`atd-${crypto.randomUUID()}`);
+  const atendimentoId = providedAtendimentoId ?? generatedAtendimentoId.current;
 
   const suggestions = useMemo(() => suggestCalculators(ctx), [ctx]);
   const suggestedIds = new Set(suggestions.map((s) => s.calculator.id));
@@ -172,6 +216,11 @@ const ClinicalCalculatorsPanel = ({ onUseResult, weightKg, sex, ...ctx }: Props)
     if (sex === "M" || sex === "F") a.sex = sex;
     return a;
   }, [weightKg, ctx.ageInYears, sex]);
+
+  const scoreContext = useMemo<ScoreContext>(
+    () => ({ atendimentoId, ageYears: ctx.ageInYears ? Math.floor(ctx.ageInYears) : null }),
+    [atendimentoId, ctx.ageInYears],
+  );
 
   const q = term.trim().toLowerCase();
   const rest = CALCULATORS.filter(
@@ -209,6 +258,7 @@ const ClinicalCalculatorsPanel = ({ onUseResult, weightKg, sex, ...ctx }: Props)
                 autofill={autofill}
                 onUseResult={onUseResult}
                 defaultOpen={i === 0}
+                scoreContext={scoreContext}
               />
             ))}
           </div>
@@ -228,7 +278,7 @@ const ClinicalCalculatorsPanel = ({ onUseResult, weightKg, sex, ...ctx }: Props)
 
       <div className="mt-2.5 space-y-1.5">
         {rest.map((c) => (
-          <CalculatorCard key={c.id} def={c} autofill={autofill} onUseResult={onUseResult} />
+          <CalculatorCard key={c.id} def={c} autofill={autofill} onUseResult={onUseResult} scoreContext={scoreContext} />
         ))}
         {rest.length === 0 && (
           <p className="text-xs text-ink-muted">Nenhuma calculadora encontrada para essa busca.</p>

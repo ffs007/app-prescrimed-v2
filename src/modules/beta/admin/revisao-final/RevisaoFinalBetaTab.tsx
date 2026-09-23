@@ -23,6 +23,7 @@ import {
   type SubSystemSummary,
 } from "./revisaoFinalLogic";
 import { useQualidadeBase } from "@/modules/medications-base/qualidade/useQualidadeBase";
+import { usePacoteBeta } from "@/modules/medications-base/beta/usePacoteBeta";
 
 /** Critérios GO/NO-GO explícitos do documento 22J. */
 const CRITERIOS_NOGO: string[] = [
@@ -65,24 +66,23 @@ export default function RevisaoFinalBetaTab() {
   const [subs, setSubs] = useState<SubSystemSummary[]>([]);
   const [versao, setVersao] = useState<string>("v0.1.0-beta");
   const qualidade = useQualidadeBase();
+  const pacote = usePacoteBeta();
 
   const load = async () => {
     setLoading(true);
-    const [lc, hd, tc, pb, vs] = await Promise.all([
+    const [lc, hd, tc, vs] = await Promise.all([
       supabase.from("lancamento_checklist" as any).select("status,criticidade,bloqueante"),
       supabase.from("hardening_beta_itens" as any).select("status,criticidade"),
       supabase.from("testes_clinicos_v2" as any).select("status_teste,critico"),
-      supabase.from("base_beta_pacote_itens" as any).select("status,obrigatorio"),
       supabase.from("lancamento_versoes" as any).select("versao").order("criado_em", { ascending: false }).limit(1),
     ]);
-    if (lc.error || hd.error || tc.error || pb.error) {
+    if (lc.error || hd.error || tc.error) {
       toast.error("Não foi possível carregar a consolidação agora.");
     }
     const arr: SubSystemSummary[] = [
       summarizeLancamento(((lc.data as any[]) ?? []) as any),
       summarizeHardening(((hd.data as any[]) ?? []) as any),
       summarizeTestesV2(((tc.data as any[]) ?? []) as any),
-      summarizePacoteBeta(((pb.data as any[]) ?? []) as any),
     ];
     setSubs(arr);
     if (vs.data && (vs.data as any[]).length > 0) setVersao((vs.data as any[])[0].versao);
@@ -99,7 +99,20 @@ export default function RevisaoFinalBetaTab() {
     return summarizeQualidade(criticos, alertas, total);
   }, [qualidade.findings]);
 
-  const allSubs = useMemo(() => sortByStatus([...subs, qualSummary]), [subs, qualSummary]);
+  useEffect(() => {
+    if (pacote.erro) toast.error("Não foi possível carregar o pacote beta de medicamentos.");
+  }, [pacote.erro]);
+
+  const pacoteSummary = useMemo(() => {
+    return summarizePacoteBeta(
+      pacote.avaliados.map((a) => ({
+        status: a.status === "pronto_beta" || a.status === "revisado" ? "revisado" : a.status,
+        obrigatorio: a.pacote.obrigatoriedade === "obrigatorio",
+      })),
+    );
+  }, [pacote.avaliados]);
+
+  const allSubs = useMemo(() => sortByStatus([...subs, pacoteSummary, qualSummary]), [subs, pacoteSummary, qualSummary]);
   const decision = useMemo(() => computeFinalDecision(allSubs), [allSubs]);
 
   const exportarRelatorio = () => {

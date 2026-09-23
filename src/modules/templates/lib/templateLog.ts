@@ -2,6 +2,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { reportError } from "@/lib/reportError";
 
 type Action = Database["public"]["Enums"]["template_log_action"];
 type TipoModelo = Database["public"]["Enums"]["template_type"];
@@ -26,7 +27,7 @@ export async function logTemplateUse(input: LogTemplateUseInput) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("log_uso_modelos_prescricao").insert({
+    const { error: writeError } = await supabase.from("log_uso_modelos_prescricao").insert({
       usuario_responsavel: user.id,
       acao: input.acao,
       id_atendimento: input.id_atendimento ?? null,
@@ -42,7 +43,8 @@ export async function logTemplateUse(input: LogTemplateUseInput) {
       alertas_gerados: (input.alertas_gerados ?? []) as any,
       justificativas: (input.justificativas ?? []) as any,
     });
+    if (writeError) throw writeError;
   } catch (err) {
-    console.warn("[templateLog] failed", err);
+    reportError("templateLog", err);
   }
 }

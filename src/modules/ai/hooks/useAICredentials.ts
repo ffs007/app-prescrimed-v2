@@ -1,4 +1,5 @@
 // Chaves de IA fornecidas pelo próprio médico (Perplexity e OpenRouter).
+// A leitura usa a view mascarada: o texto puro da chave nunca chega ao navegador (só a edge function o lê).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseUntyped } from "@/integrations/supabase/untyped";
@@ -18,7 +19,7 @@ export function useAICredentials() {
     queryKey: ["ia", "credenciais"],
     queryFn: async (): Promise<AICredentials> => {
       const { data, error } = await supabaseUntyped
-        .from("ia_credenciais_usuario")
+        .from("ia_credenciais_usuario_mascaradas")
         .select("perplexity_key, openrouter_key, modelo_preferido, atualizacoes_automaticas")
         .maybeSingle();
       if (error) throw error;

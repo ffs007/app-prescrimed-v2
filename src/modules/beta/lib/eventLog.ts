@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportError } from "@/lib/reportError";
 
 export type BetaEventType =
   | "prescricao_criada"
@@ -25,12 +26,13 @@ export async function logBetaEvent(
 ): Promise<void> {
   try {
     const { data: auth } = await supabase.auth.getUser();
-    await supabase.from("eventos_beta_log").insert({
+    const { error: writeError } = await supabase.from("eventos_beta_log").insert({
       tipo_evento: tipo,
       payload: payload as never,
       usuario: auth.user?.id ?? null,
     });
-  } catch {
-    // silent
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/beta/lib/eventLog", error);
   }
 }

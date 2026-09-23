@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { printHtml, downloadHtml } from "@/modules/documents/lib/pdfPrint";
+import { persistFormDocument } from "@/modules/documents/lib/persistEmission";
 import { useEmissionHistory } from "@/modules/prescription/hooks/useEmissionHistory";
 import {
   AGRAVOS,
@@ -85,6 +86,32 @@ export default function NotificationWorkbench({ initialAgravoId }: Props) {
     wb.addCustomField(newFieldSection, { key, label: newFieldLabel.trim(), type: newFieldType, half: newFieldType !== "textarea" });
     setNewFieldLabel("");
     setNewFieldSection(null);
+  };
+
+  /** Registra a ficha em documentos_gerados antes de deixá-la sair. Sem registro, não imprime nem baixa. */
+  const registerEmission = async (acao: "imprimiu" | "baixou"): Promise<boolean> => {
+    if (!wb.agravo) {
+      toast({ title: "Escolha o agravo", description: "Selecione a doença ou evento notificado.", variant: "destructive" });
+      return false;
+    }
+    try {
+      await persistFormDocument({
+        tipo: "notificacao_compulsoria",
+        titulo: `Notificação compulsória — ${String(wb.data.outroAgravoNome || wb.agravo.nome)}`,
+        resumo: notifToText(wb.sections, wb.data),
+        campos: wb.data,
+        acao,
+      });
+      return true;
+    } catch (err) {
+      console.error("[NotificationWorkbench.registrarEmissao]", err);
+      toast({
+        title: "Notificação não registrada — emissão cancelada",
+        description: "Verifique a conexão e tente novamente. Nenhum documento é emitido sem registro.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   const registrar = async () => {
@@ -424,13 +451,20 @@ export default function NotificationWorkbench({ initialAgravoId }: Props) {
 
             <Separator />
             <div className="grid gap-2">
-              <Button type="button" onClick={() => printHtml(html)}>
+              <Button
+                type="button"
+                onClick={async () => {
+                  if (await registerEmission("imprimiu")) printHtml(html);
+                }}
+              >
                 <Printer className="mr-2 h-4 w-4" /> Imprimir / PDF
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => downloadHtml(html, `notificacao-${(wb.agravo?.id ?? "ficha")}.html`)}
+                onClick={async () => {
+                  if (await registerEmission("baixou")) downloadHtml(html, `notificacao-${(wb.agravo?.id ?? "ficha")}.html`);
+                }}
               >
                 <FileDown className="mr-2 h-4 w-4" /> Baixar arquivo
               </Button>

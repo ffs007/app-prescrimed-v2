@@ -3,6 +3,7 @@
 // Nunca grava texto clínico, dados do paciente nem o conteúdo enviado.
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseUntyped } from "@/integrations/supabase/untyped";
+import { reportError } from "@/lib/reportError";
 
 export interface AILogEntry {
   modulo: "chatbot" | "documento" | "atualizacoes" | "validacao_template";
@@ -22,7 +23,7 @@ export async function logAIUsage(entry: AILogEntry): Promise<void> {
   try {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return;
-    await supabaseUntyped.from("ia_interacoes_log").insert({
+    const { error: writeError } = await supabaseUntyped.from("ia_interacoes_log").insert({
       user_id: auth.user.id,
       modulo: entry.modulo,
       provedor: entry.provedor ?? null,
@@ -31,7 +32,8 @@ export async function logAIUsage(entry: AILogEntry): Promise<void> {
       referencias: entry.referencias ?? [],
       aceito: entry.aceito ?? null,
     });
-  } catch {
-    // silencioso
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/ai/lib/aiLog", error);
   }
 }

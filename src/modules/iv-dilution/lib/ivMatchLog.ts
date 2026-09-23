@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { MatchResult, MatchType } from "./ivMatcher";
+import { reportError } from "@/lib/reportError";
 
 type Action =
   | "associado_automaticamente"
@@ -20,7 +21,7 @@ export async function logIVMatch(params: {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("log_correspondencia_medicamentos_iv").insert({
+    const { error: writeError } = await supabase.from("log_correspondencia_medicamentos_iv").insert({
       usuario_responsavel: user.id,
       id_prescricao: params.prescricaoId ?? null,
       id_medicamento_prescrito: params.medicamentoPrescritoId ?? null,
@@ -32,8 +33,9 @@ export async function logIVMatch(params: {
       score_confianca: params.result.best?.score ?? 0,
       acao_usuario: params.action,
     } as any);
-  } catch {
-    // silencioso: log não deve quebrar fluxo
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/iv-dilution/lib/ivMatchLog", error);
   }
 }
 
@@ -45,13 +47,14 @@ export async function suggestSearchTerm(params: {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("iv_termos_sugeridos").insert({
+    const { error: writeError } = await supabase.from("iv_termos_sugeridos").insert({
       id_medicamento: params.medId,
       principio_ativo: params.principioAtivo,
       termo_sugerido: params.termo,
       ultimo_usuario: user.id,
     } as any);
-  } catch {
-    // ignore
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/iv-dilution/lib/ivMatchLog", error);
   }
 }

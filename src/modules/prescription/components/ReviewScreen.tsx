@@ -1,10 +1,14 @@
 import { useEffect } from "react";
-import { ArrowLeft, ShieldCheck, ShieldAlert, AlertCircle, CheckCircle2, FileText } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ShieldAlert, AlertCircle, CheckCircle2, FileText, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReactNode } from "react";
 import type { ValidationResult } from "../services/documentValidation";
 import type { SafetyAssessment } from "../services/clinicalSafety";
 import { statusLabel } from "../services/clinicalSafety";
+import type { AssinaturaPerfil } from "@/modules/documents/lib/types";
 import EmissionActions from "./EmissionActions";
 
 const cn = (...xs: Array<string | false | null | undefined>) =>
@@ -25,6 +29,14 @@ interface Props {
    * Quando presente, substitui o bloco padrão "Emitir documento".
    */
   regulatoryPanel?: ReactNode;
+  /** Perfis de assinatura cadastrados (Admin → Documentos). Vazio esconde o seletor. */
+  signatureProfiles?: AssinaturaPerfil[];
+  selectedProfileId?: string;
+  onSelectProfile?: (id: string) => void;
+  /** Vem de documentos_settings.exigir_revisao_final_concluida. */
+  requireFinalReview: boolean;
+  finalReviewConfirmed: boolean;
+  onToggleFinalReview: (v: boolean) => void;
 }
 
 type FinalStatus = "ready" | "review" | "blocked";
@@ -70,6 +82,12 @@ const ReviewScreen = ({
   documentText,
   onPrint,
   regulatoryPanel,
+  signatureProfiles = [],
+  selectedProfileId,
+  onSelectProfile,
+  requireFinalReview,
+  finalReviewConfirmed,
+  onToggleFinalReview,
 }: Props) => {
   // Lock scroll + Esc to close
   useEffect(() => {
@@ -91,10 +109,13 @@ const ReviewScreen = ({
   const finalStatus = computeFinalStatus(validation, assessment);
   const cfg = STATUS_CFG[finalStatus];
   const StatusIcon = cfg.icon;
-  const canEmit = finalStatus !== "blocked";
+  const finalReviewOk = !requireFinalReview || finalReviewConfirmed;
+  const canEmit = finalStatus !== "blocked" && finalReviewOk;
   const blockedReason =
     finalStatus === "blocked"
       ? validation.blockers[0] || assessment.pendingCritical[0]?.title || "Resolva as pendências."
+      : !finalReviewOk
+      ? "Confirme a revisão final antes de emitir."
       : undefined;
 
   // Pendências consolidadas
@@ -225,6 +246,44 @@ const ReviewScreen = ({
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Perfil de assinatura — só aparece com perfis cadastrados em Admin → Documentos. */}
+            {signatureProfiles.length > 0 && (
+              <div className="rounded-lg border border-ink-soft bg-card p-4 shadow-paper">
+                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-editorial text-ink-faint">
+                  <PenLine className="h-3 w-3" />
+                  Perfil de assinatura
+                </div>
+                <Select value={selectedProfileId} onValueChange={onSelectProfile}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                  <SelectContent>
+                    {signatureProfiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.perfil_nome} — {p.nome_profissional}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Gate de revisão final — só aparece se o admin exigiu (documentos_settings). */}
+            {requireFinalReview && (
+              <div className={cn(
+                "flex items-start gap-2.5 rounded-lg border p-4 shadow-paper",
+                finalReviewConfirmed ? "border-ink-soft bg-card" : "border-warning/40 bg-warning/5",
+              )}>
+                <Checkbox
+                  id="revisao-final"
+                  checked={finalReviewConfirmed}
+                  onCheckedChange={(v) => onToggleFinalReview(Boolean(v))}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="revisao-final" className="cursor-pointer text-[12px] leading-relaxed text-ink">
+                  Revisei este documento por completo (paciente, conteúdo e assinatura) e confirmo a emissão.
+                </Label>
               </div>
             )}
 

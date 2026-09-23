@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PedCalcInput, PedCalcResult } from "./pediatricCalc";
+import { reportError } from "@/lib/reportError";
 
 type PedCalcEvent =
   | "calculo_realizado"
@@ -22,7 +23,7 @@ export async function logPediatricCalc(args: {
     const { data: u } = await supabase.auth.getUser();
     const uid = u.user?.id;
     if (!uid) return;
-    await supabase.from("log_calculos_pediatricos").insert({
+    const { error: writeError } = await supabase.from("log_calculos_pediatricos").insert({
       usuario_responsavel: uid,
       evento: args.evento,
       principio_ativo: args.principio_ativo,
@@ -43,7 +44,8 @@ export async function logPediatricCalc(args: {
       alertas_gerados: args.result.alerts as any,
       justificativa: args.justificativa ?? null,
     });
-  } catch {
-    /* silencioso */
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/iv-dilution/lib/pediatricCalcLog", error);
   }
 }

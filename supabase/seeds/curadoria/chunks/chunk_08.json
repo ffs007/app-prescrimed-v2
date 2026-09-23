@@ -1,0 +1,18 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 8,
+  "promptNome": "parametrizacao_institucional",
+  "promptInputHash": "",
+  "instituicaoId": 1,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 08 (institucional, instituicao_id=NACIONAL=1 por padrão): Parâmetros fluxo local (instituicoes_config) + templates prescrição rápida institucionais/pessoais + itens dos templates com FK base_medicamentos_geral UUID + políticas dupla checagem por medicamento (ativa=false por padrão; cada instituição habilita a sua)."
+  },
+  "tabelas": {
+    "instituicoes_config": [],
+    "prescricao_rapida_templates": [],
+    "prescricao_template_item": [],
+    "dupla_checagem_politica": []
+  }
+}

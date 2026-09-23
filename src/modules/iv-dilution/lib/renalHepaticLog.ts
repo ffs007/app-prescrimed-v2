@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PatientRH, RHAlert, RHResult } from "./renalHepaticCalc";
+import { reportError } from "@/lib/reportError";
 
 export async function logRHAlert(args: {
   alert: RHAlert;
@@ -15,7 +16,7 @@ export async function logRHAlert(args: {
     const { data: u } = await supabase.auth.getUser();
     const uid = u.user?.id;
     if (!uid) return;
-    await supabase.from("log_alertas_renal_hepatico").insert({
+    const { error: writeError } = await supabase.from("log_alertas_renal_hepatico").insert({
       usuario_responsavel: uid,
       principio_ativo: args.principio_ativo,
       id_prescricao: args.id_prescricao ?? null,
@@ -38,5 +39,8 @@ export async function logRHAlert(args: {
       acao_usuario: args.acao_usuario ?? "visualizou",
       justificativa: args.justificativa ?? null,
     });
-  } catch { /* silencioso */ }
+    if (writeError) throw writeError;
+  } catch (error) {
+    reportError("modules/iv-dilution/lib/renalHepaticLog", error);
+  }
 }

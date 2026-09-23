@@ -10,9 +10,9 @@ export async function saveGeneratedDocument(args: {
   id_atendimento?: string | null;
   id_paciente?: string | null;
   origem?: "atendimento_atual" | "manual";
-}): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+}): Promise<string> {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw authError ?? new Error("Sessão expirada. Entre novamente para registrar o documento.");
   const hash = await hashDocument({ html: args.rendered.html, json: args.rendered.conteudo_json });
   const { data, error } = await supabase.from("documentos_gerados").insert({
     tipo: args.rendered.tipo,
@@ -27,7 +27,8 @@ export async function saveGeneratedDocument(args: {
     codigo_validacao: shortValidationCode(),
     hash_documento: hash,
   }).select("id").single();
-  if (error) { console.error(error); return null; }
+  if (error || !data?.id) throw error ?? new Error("O Supabase não retornou o identificador do documento.");
+  await logDocumentAction({ id_documento: data.id, tipo_documento: args.rendered.tipo, acao: "gerou_pdf" });
   await recordCriticalEvent({
     acao: AUDIT_ACTIONS.DOCUMENTO_EMITIDO,
     modulo: "documentos",
@@ -35,7 +36,7 @@ export async function saveGeneratedDocument(args: {
     entidadeId: data?.id ?? null,
     detalhes: { hash, origem: args.origem ?? "atendimento_atual" },
   });
-  return data?.id ?? null;
+  return data.id;
 }
 
 export async function logDocumentAction(args: {
@@ -47,9 +48,9 @@ export async function logDocumentAction(args: {
   destino_envio?: string | null;
   motivo_cancelamento?: string | null;
 }): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase.from("log_documentos_clinicos").insert({
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw authError ?? new Error("Sessão expirada. Entre novamente para registrar a ação do documento.");
+  const { error } = await supabase.from("log_documentos_clinicos").insert({
     id_documento: args.id_documento ?? null,
     tipo_documento: args.tipo_documento ?? null,
     acao: args.acao,
@@ -59,12 +60,14 @@ export async function logDocumentAction(args: {
     destino_envio: args.destino_envio ?? null,
     motivo_cancelamento: args.motivo_cancelamento ?? null,
   });
+  if (error) throw error;
 }
 
 export async function cancelDocument(id: string, motivo: string): Promise<void> {
-  await supabase.from("documentos_gerados")
+  const { error } = await supabase.from("documentos_gerados")
     .update({ status: "cancelado", motivo_cancelamento: motivo })
     .eq("id", id);
+  if (error) throw error;
   await logDocumentAction({ id_documento: id, acao: "cancelou", motivo_cancelamento: motivo });
   await recordCriticalEvent({
     acao: AUDIT_ACTIONS.DOCUMENTO_ALTERADO,

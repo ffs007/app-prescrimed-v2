@@ -54,9 +54,10 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    const message = (e as Error).message;
-    return new Response(JSON.stringify({ error: message }), {
-      status: message === "Unauthorized" ? 401 : 400,
+    console.error("create-portal-session error:", e);
+    const unauthorized = (e as Error).message === "Unauthorized";
+    return new Response(JSON.stringify({ error: unauthorized ? "Unauthorized" : "portal-indisponivel" }), {
+      status: unauthorized ? 401 : 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

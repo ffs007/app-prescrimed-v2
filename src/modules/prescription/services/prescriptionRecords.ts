@@ -37,31 +37,28 @@ interface SaveArgs {
   items: PrescriptionItemRecord[];
 }
 
-/** Persiste a receita emitida. Falha silenciosa: nunca bloqueia a impressão. */
+/** Persiste a receita emitida. Lança erro se a gravação falhar; o chamador decide como avisar o usuário. */
 export async function savePrescriptionRecord(args: SaveArgs): Promise<void> {
-  try {
-    if (args.items.length === 0) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("prescricoes_historico").insert({
-      id_paciente: args.patientName.trim() || "Sem identificação",
-      profissional_id: user.id,
-      contexto_atendimento: args.careContext ?? args.environment,
-      cid: args.cid ?? null,
-      diagnostico: args.conditionName ?? null,
-      dados_paciente_snapshot: {
-        nome: args.patientName || null,
-        ambiente: args.environment,
-        quadro: args.conditionName ?? null,
-        quadro_tipo: args.conditionType ?? null,
-        receituario: args.regulatoryLabel ?? null,
-      } as never,
-      itens: args.items as never,
-      status: "emitida",
-    });
-  } catch (e) {
-    console.error("Falha ao registrar receita", e);
-  }
+  if (args.items.length === 0) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Sessão expirada. Entre novamente para registrar a receita.");
+  const { error } = await supabase.from("prescricoes_historico").insert({
+    id_paciente: args.patientName.trim() || "Sem identificação",
+    profissional_id: user.id,
+    contexto_atendimento: args.careContext ?? args.environment,
+    cid: args.cid ?? null,
+    diagnostico: args.conditionName ?? null,
+    dados_paciente_snapshot: {
+      nome: args.patientName || null,
+      ambiente: args.environment,
+      quadro: args.conditionName ?? null,
+      quadro_tipo: args.conditionType ?? null,
+      receituario: args.regulatoryLabel ?? null,
+    } as never,
+    itens: args.items as never,
+    status: "emitida",
+  });
+  if (error) throw error;
 }
 
 type Row = {

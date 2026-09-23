@@ -7,7 +7,7 @@ import { FileText, ShieldAlert } from "lucide-react";
 
 interface Resp {
   ok: boolean;
-  reason?: "expirado" | "revogado" | "nao_encontrado";
+  reason?: "expirado" | "revogado" | "nao_encontrado" | "erro_interno";
   documento?: {
     titulo: string;
     tipo: string;
@@ -25,12 +25,13 @@ export default function PublicDocumentPage() {
 
   useEffect(() => { (async () => {
     try {
-      const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/public-document-link?token=${encodeURIComponent(token ?? "")}`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-document-link?token=${encodeURIComponent(token ?? "")}`;
       const res = await fetch(url);
       const json = await res.json();
       setData(json);
-    } catch {
-      setData({ ok: false, reason: "nao_encontrado" });
+    } catch (err) {
+      console.error("Falha ao carregar documento público", err);
+      setData({ ok: false, reason: "erro_interno" });
     } finally {
       setLoading(false);
     }
@@ -43,6 +44,7 @@ export default function PublicDocumentPage() {
   if (!data?.ok) {
     const msg = data?.reason === "expirado" ? "Este link expirou. Solicite novo envio ao profissional."
       : data?.reason === "revogado" ? "Este documento não está mais disponível."
+      : data?.reason === "erro_interno" ? "Não foi possível carregar o documento agora. Tente novamente em instantes."
       : "Documento não encontrado.";
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

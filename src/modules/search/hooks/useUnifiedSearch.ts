@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useClinicalLibrary } from "@/modules/library/hooks/useClinicalLibrary";
+import { reportError } from "@/lib/reportError";
 import {
   NAV_ENTRIES,
   buildPathologyEntries,
@@ -74,8 +75,8 @@ export function useUnifiedSearch(query: string) {
       const next = [value, ...prev.filter((r) => r !== value)].slice(0, 6);
       try {
         localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-      } catch {
-        /* ignora */
+      } catch (error) {
+        reportError("modules/search/hooks/useUnifiedSearch", error);
       }
       return next;
     });
@@ -85,8 +86,8 @@ export function useUnifiedSearch(query: string) {
     setContextPathology(label);
     try {
       localStorage.setItem(CONTEXT_KEY, label);
-    } catch {
-      /* ignora */
+    } catch (error) {
+      reportError("modules/search/hooks/useUnifiedSearch", error);
     }
   }, []);
 

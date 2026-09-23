@@ -12,7 +12,7 @@ export function usePendenciasReport() {
       supabase.from("base_blocos_clinicos" as any).select("slug, nome").order("ordem"),
       supabase.from("base_blocos_medicamentos_planejados" as any).select("*"),
       supabase.from("base_medicamentos_geral" as any).select("id, principio_ativo, nome_normalizado, status_revisao, fonte_referencia, cid_relacionados, queixas_relacionadas, dose_pediatrica_padrao, dose_adulto_padrao"),
-      supabase.from("base_apresentacoes_medicamentos" as any).select("medicamento_id"),
+      supabase.from("base_apresentacoes_medicamentos" as any).select("id_medicamento"),
     ]);
     const firstError = [blocosRes, planRes, medsRes, apresRes].find((r) => r.error)?.error;
     if (firstError) {
@@ -30,7 +30,7 @@ export function usePendenciasReport() {
     });
     const apresMap = new Map<string, number>();
     ((apresRes.data ?? []) as any[]).forEach((a) =>
-      apresMap.set(a.medicamento_id, (apresMap.get(a.medicamento_id) ?? 0) + 1),
+      apresMap.set(a.id_medicamento, (apresMap.get(a.id_medicamento) ?? 0) + 1),
     );
 
     const out: PendenciaItem[] = [];

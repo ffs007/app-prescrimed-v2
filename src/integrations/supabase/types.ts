@@ -7390,6 +7390,81 @@ export type Database = {
         }
         Relationships: []
       }
+      patologia_conteudo: {
+        Row: {
+          ambiente: string | null
+          ativo: boolean
+          conteudo: Json
+          created_at: string
+          fonte: string | null
+          id: string
+          nome_normalizado: string
+          ordem: number
+          secao: string
+          updated_at: string
+        }
+        Insert: {
+          ambiente?: string | null
+          ativo?: boolean
+          conteudo?: Json
+          created_at?: string
+          fonte?: string | null
+          id?: string
+          nome_normalizado: string
+          ordem?: number
+          secao: string
+          updated_at?: string
+        }
+        Update: {
+          ambiente?: string | null
+          ativo?: boolean
+          conteudo?: Json
+          created_at?: string
+          fonte?: string | null
+          id?: string
+          nome_normalizado?: string
+          ordem?: number
+          secao?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      patologia_documentos: {
+        Row: {
+          ambiente: string | null
+          ativo: boolean
+          created_at: string
+          documento: string
+          id: string
+          nome_normalizado: string
+          nota: string | null
+          prioridade: number
+          updated_at: string
+        }
+        Insert: {
+          ambiente?: string | null
+          ativo?: boolean
+          created_at?: string
+          documento: string
+          id?: string
+          nome_normalizado: string
+          nota?: string | null
+          prioridade?: number
+          updated_at?: string
+        }
+        Update: {
+          ambiente?: string | null
+          ativo?: boolean
+          created_at?: string
+          documento?: string
+          id?: string
+          nome_normalizado?: string
+          nota?: string | null
+          prioridade?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       patologia_medicamento: {
         Row: {
           ajuste_hepatico: boolean
@@ -7543,6 +7618,96 @@ export type Database = {
           patologia_nome?: string
           prescricoes_modelo?: Json
           recursos?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      patologia_recursos: {
+        Row: {
+          ativo: boolean
+          codigo: string | null
+          created_at: string
+          id: string
+          nome_normalizado: string
+          ordem: number
+          resumo: string | null
+          tipo: string
+          titulo: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo?: string | null
+          created_at?: string
+          id?: string
+          nome_normalizado: string
+          ordem?: number
+          resumo?: string | null
+          tipo: string
+          titulo: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string | null
+          created_at?: string
+          id?: string
+          nome_normalizado?: string
+          ordem?: number
+          resumo?: string | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
+      patologias_usuario: {
+        Row: {
+          ambientes: string[]
+          ativo: boolean
+          categoria: string | null
+          cid10: string | null
+          created_at: string
+          gravidade: string | null
+          id: string
+          medicamentos: Json
+          nome: string
+          observacoes: string | null
+          sinonimos: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ambientes?: string[]
+          ativo?: boolean
+          categoria?: string | null
+          cid10?: string | null
+          created_at?: string
+          gravidade?: string | null
+          id?: string
+          medicamentos?: Json
+          nome: string
+          observacoes?: string | null
+          sinonimos?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          ambientes?: string[]
+          ativo?: boolean
+          categoria?: string | null
+          cid10?: string | null
+          created_at?: string
+          gravidade?: string | null
+          id?: string
+          medicamentos?: Json
+          nome?: string
+          observacoes?: string | null
+          sinonimos?: string[]
           updated_at?: string
           user_id?: string
         }
@@ -13500,6 +13665,7 @@ export type Database = {
           rejeitados: number
         }[]
       }
+      fn_guard_admin_or_service: { Args: never; Returns: undefined }
       fn_fila_revisao_clinica: {
         Args: { p_filtro?: string; p_limit?: number }
         Returns: {
@@ -14215,6 +14381,10 @@ export type Database = {
         | "anexo_tecnico_iv"
         | "plano_terapeutico"
         | "resumo_atendimento"
+        | "aih"
+        | "apac"
+        | "notificacao_compulsoria"
+        | "procedimento"
       entrada_item_tipo:
         | "medicamento"
         | "exame"
@@ -14873,6 +15043,10 @@ export const Constants = {
         "anexo_tecnico_iv",
         "plano_terapeutico",
         "resumo_atendimento",
+        "aih",
+        "apac",
+        "notificacao_compulsoria",
+        "procedimento",
       ],
       entrada_item_tipo: [
         "medicamento",

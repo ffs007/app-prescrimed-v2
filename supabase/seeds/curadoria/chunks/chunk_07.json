@@ -1,0 +1,17 @@
+{
+  "$schemaChunkCuradoria": 1,
+  "chunkNumero": 7,
+  "promptNome": "linhas_cuidado",
+  "promptInputHash": "",
+  "instituicaoId": null,
+  "dadosGerais": {
+    "dataCriacao": "2026-09-21T00:00:00.000Z",
+    "autorResponsavel": null,
+    "observacoes": "CHUNK 07: 10 linhas de cuidado (perfis de risco) + ações ordenadas por linha + junção condicao_linha_cuidado. CHECK conexao: só valores permitidos ['seguranca','protecao','acompanhamento','acionamento_rede','documentacao','comunicacao_formal'] e pelo menos 1."
+  },
+  "tabelas": {
+    "linhas_cuidado": [],
+    "linha_cuidado_acoes": [],
+    "condicao_linha_cuidado": []
+  }
+}

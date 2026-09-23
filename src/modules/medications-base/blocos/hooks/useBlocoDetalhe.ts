@@ -24,14 +24,14 @@ export function useBlocoDetalhe(slug: string | null) {
     const [planRes, medsRes, apresRes, checkRes] = await Promise.all([
       supabase.from("base_blocos_medicamentos_planejados" as any).select("*").eq("bloco_slug", slug).order("ordem"),
       supabase.from("base_medicamentos_geral" as any).select("id, principio_ativo, nome_normalizado, status_revisao, cid_relacionados, queixas_relacionadas"),
-      supabase.from("base_apresentacoes_medicamentos" as any).select("medicamento_id"),
+      supabase.from("base_apresentacoes_medicamentos" as any).select("id_medicamento"),
       supabase.from("base_blocos_checklist_itens" as any).select("*").eq("bloco_slug", slug),
     ]);
 
     const meds = (medsRes.data ?? []) as any[];
     const apres = (apresRes.data ?? []) as any[];
     const apresMap = new Map<string, number>();
-    apres.forEach((a) => apresMap.set(a.medicamento_id, (apresMap.get(a.medicamento_id) ?? 0) + 1));
+    apres.forEach((a) => apresMap.set(a.id_medicamento, (apresMap.get(a.id_medicamento) ?? 0) + 1));
     const medByNorm = new Map<string, any>();
     meds.forEach((m) => {
       const k = m.nome_normalizado || norm(m.principio_ativo || "");
